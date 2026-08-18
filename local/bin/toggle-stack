@@ -1,7 +1,8 @@
 #!/bin/bash
 # Smart toggle between Stacked (tab) and Split (side-by-side) for the active window.
 # - If active window is part of a multi-window stack (>1 tabs): pops out into a side-by-side split tile.
-# - If active window is standalone (<=1 tab): merges with adjacent window to form a combined stack.
+# - If active window is standalone (<=1 tab): merges into any existing stack on the workspace,
+#   or merges with adjacent windows to form a stack.
 
 set -euo pipefail
 
@@ -11,57 +12,99 @@ active=$(hyprctl activewindow -j 2>/dev/null || true)
 addr=$(echo "$active" | jq -r '.address // empty')
 [[ -n "$addr" ]] || exit 0
 
+active_ws=$(echo "$active" | jq -r '.workspace.name // empty')
 grouped_json=$(echo "$active" | jq -c '.grouped // []')
 grouped_len=$(echo "$grouped_json" | jq 'length')
 
 if [[ "$grouped_len" -gt 1 ]]; then
   # Pop out of the multi-window stack into a side-by-side split tile
   hyprctl dispatch "hl.dsp.window.move({ out_of_group = true })" > /dev/null
-else
-  # Standalone window (0 or 1 tab): merge with adjacent neighbor window into a stack
+  exit 0
+fi
 
-  # 1. Try direct move into an existing group on left, right, up, down
-  if hyprctl dispatch "hl.dsp.window.move({ into_group = \"l\" })" > /dev/null 2>&1; then
+# --- Standalone window (0 or 1 tab): merge into the workspace stack ---
+
+# 1. Try immediate move into adjacent group in all directions
+for d in l r u d; do
+  hyprctl dispatch "hl.dsp.window.move({ into_group = \"$d\" })" > /dev/null 2>&1 || true
+  is_grp=$(hyprctl activewindow -j 2>/dev/null | jq '.grouped | length')
+  if [[ "$is_grp" -gt 1 ]]; then
     exit 0
   fi
-  if hyprctl dispatch "hl.dsp.window.move({ into_group = \"r\" })" > /dev/null 2>&1; then
-    exit 0
-  fi
-  if hyprctl dispatch "hl.dsp.window.move({ into_group = \"u\" })" > /dev/null 2>&1; then
-    exit 0
-  fi
-  if hyprctl dispatch "hl.dsp.window.move({ into_group = \"d\" })" > /dev/null 2>&1; then
-    exit 0
+done
+
+# 2. Check if an existing group exists elsewhere on the workspace (e.g. across multiple split columns)
+group_info=$(hyprctl clients -j 2>/dev/null | jq -c '
+  [ .[] | select(.workspace.name == "'"$active_ws"'" and (.grouped | length > 0) and .address != "'"$addr"'") ]
+  | .[0] // empty
+')
+
+if [[ -n "$group_info" ]]; then
+  gx=$(echo "$group_info" | jq '.at[0]')
+  gy=$(echo "$group_info" | jq '.at[1]')
+  ax=$(echo "$active" | jq '.at[0]')
+  ay=$(echo "$active" | jq '.at[1]')
+
+  # Determine direction towards the existing group
+  move_dir="l"
+  if (( gx > ax )); then
+    move_dir="r"
+  elif (( gy < ay && gx == ax )); then
+    move_dir="u"
+  elif (( gy > ay && gx == ax )); then
+    move_dir="d"
   fi
 
-  # 2. If neighbor is not yet a group, initialize group on neighbor and merge
-  for dir in l r u d; do
-    opp=""
-    case "$dir" in
-      l) opp="r" ;;
-      r) opp="l" ;;
-      u) opp="d" ;;
-      d) opp="u" ;;
-    esac
-
-    # Try moving focus to neighbor in this direction
-    orig_addr=$(hyprctl activewindow -j 2>/dev/null | jq -r '.address // empty')
-    hyprctl dispatch "hl.dsp.focus({ direction = \"$dir\" })" > /dev/null 2>&1 || true
-    new_addr=$(hyprctl activewindow -j 2>/dev/null | jq -r '.address // empty')
-
-    # If focus successfully moved to a different neighbor window:
-    if [[ -n "$new_addr" && "$new_addr" != "$orig_addr" ]]; then
-      # Make neighbor a group container
-      hyprctl dispatch "hl.dsp.group.toggle()" > /dev/null 2>&1 || true
-      # Return focus to original window
-      hyprctl dispatch "hl.dsp.focus({ direction = \"$opp\" })" > /dev/null 2>&1 || true
-      # Move original window into neighbor's new group
-      if hyprctl dispatch "hl.dsp.window.move({ into_group = \"$dir\" })" > /dev/null 2>&1; then
+  # Swap and move towards the group until merged
+  for (( i=0; i<6; i++ )); do
+    for d in l r u d; do
+      hyprctl dispatch "hl.dsp.window.move({ into_group = \"$d\" })" > /dev/null 2>&1 || true
+      is_grp=$(hyprctl activewindow -j 2>/dev/null | jq '.grouped | length')
+      if [[ "$is_grp" -gt 1 ]]; then
         exit 0
       fi
-    fi
-  done
+    done
 
-  # 3. Fallback: if no neighbor window exists on workspace, toggle group mode on self
-  hyprctl dispatch "hl.dsp.group.toggle()" > /dev/null 2>&1 || true
+    # Swap step towards the group
+    hyprctl dispatch "hl.dsp.window.swap({ direction = \"$move_dir\" })" > /dev/null 2>&1 || true
+
+    for d in l r u d; do
+      hyprctl dispatch "hl.dsp.window.move({ into_group = \"$d\" })" > /dev/null 2>&1 || true
+      is_grp=$(hyprctl activewindow -j 2>/dev/null | jq '.grouped | length')
+      if [[ "$is_grp" -gt 1 ]]; then
+        exit 0
+      fi
+    done
+  done
 fi
+
+# 3. No group existed yet -> merge with nearest neighbor to create a group
+for dir in l r u d; do
+  opp=""
+  case "$dir" in
+    l) opp="r" ;;
+    r) opp="l" ;;
+    u) opp="d" ;;
+    d) opp="u" ;;
+  esac
+
+  orig_addr=$(hyprctl activewindow -j 2>/dev/null | jq -r '.address // empty')
+  hyprctl dispatch "hl.dsp.focus({ direction = \"$dir\" })" > /dev/null 2>&1 || true
+  new_addr=$(hyprctl activewindow -j 2>/dev/null | jq -r '.address // empty')
+
+  if [[ -n "$new_addr" && "$new_addr" != "$orig_addr" ]]; then
+    # Make neighbor a group container
+    hyprctl dispatch "hl.dsp.group.toggle()" > /dev/null 2>&1 || true
+    # Focus back to original window
+    hyprctl dispatch "hl.dsp.focus({ direction = \"$opp\" })" > /dev/null 2>&1 || true
+    # Move original window into neighbor's group
+    hyprctl dispatch "hl.dsp.window.move({ into_group = \"$dir\" })" > /dev/null 2>&1 || true
+    is_grp=$(hyprctl activewindow -j 2>/dev/null | jq '.grouped | length')
+    if [[ "$is_grp" -gt 1 ]]; then
+      exit 0
+    fi
+  fi
+done
+
+# 4. Fallback: toggle group mode on self
+hyprctl dispatch "hl.dsp.group.toggle()" > /dev/null 2>&1 || true
