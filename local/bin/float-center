@@ -1,32 +1,86 @@
 #!/bin/bash
-# Toggle focused window between tiled and centered floating (without pinning).
-# Usage: float-center [width] [height]
+# Super+O: Move windows between main workspace and the centered scratchpad (special:center).
+# Windows in the scratchpad are automatically stacked/grouped together (like Zellij).
+#
+# From main workspace: moves focused window into special:center and merges into the stack.
+# From scratchpad:     ejects ONLY the focused window out of the stack and into the active main workspace.
+#                      Other scratchpad windows stay stacked.
+#
+# Use Alt+F to show/hide the scratchpad panel without moving any windows.
 
 set -euo pipefail
 
-width=${1:-1300}
-height=${2:-900}
+SPECIAL="center"
 
 active=$(hyprctl activewindow -j 2>/dev/null || true)
-[[ -n $active ]] || exit 0
+[[ -n "$active" ]] || exit 0
 
-addr=$(jq -r '.address // empty' <<< "$active")
-[[ -n $addr ]] || exit 0
+active_workspace=$(echo "$active" | jq -r '.workspace.name // empty')
+active_addr=$(echo "$active" | jq -r '.address // empty')
+active_floating=$(echo "$active" | jq -r '.floating // false')
+active_pinned=$(echo "$active" | jq -r '.pinned // false')
+active_grouped=$(echo "$active" | jq '.grouped | length')
 
-floating=$(jq -r '.floating' <<< "$active")
-pinned=$(jq -r '.pinned' <<< "$active")
+[[ -n "$active_addr" ]] || exit 0
 
-# If pinned, unpin it first
-if [[ $pinned == "true" ]]; then
-  hyprctl dispatch "hl.dsp.window.pin({ window = \"address:$addr\" })" > /dev/null
-fi
+if [[ "$active_workspace" == "special:$SPECIAL" ]]; then
+  # --- IN SCRATCHPAD: eject only this window to the active main workspace ---
+  current_main=$(hyprctl monitors -j 2>/dev/null \
+    | jq -r '.[0].activeWorkspace.name // "1"' 2>/dev/null || echo "1")
 
-if [[ $floating == "true" ]]; then
-  # Already floating -> Snap back to tiled grid
-  hyprctl dispatch "hl.dsp.window.float({ window = \"address:$addr\", action = \"toggle\" })" > /dev/null
+  # Move out of group if it was part of a stack
+  if [[ "$active_grouped" -gt 0 ]]; then
+    hyprctl dispatch "hl.dsp.window.move({ out_of_group = true })" > /dev/null 2>&1 || true
+  fi
+
+  # Move to active main workspace
+  hyprctl dispatch "hl.dsp.window.move({ window = \"address:$active_addr\", workspace = \"$current_main\" })" > /dev/null
+
+  # If scratchpad is now empty and still showing, close it
+  remaining=$(hyprctl clients -j 2>/dev/null \
+    | jq "[.[] | select(.workspace.name == \"special:$SPECIAL\")] | length" 2>/dev/null || echo 0)
+  
+  if [[ "$remaining" -eq 0 ]]; then
+    special_visible=$(hyprctl monitors -j 2>/dev/null \
+      | jq 'any(.[]; .specialWorkspace.name == "special:'"$SPECIAL"'")' 2>/dev/null || echo false)
+    if [[ "$special_visible" == "true" ]]; then
+      hyprctl dispatch "hl.dsp.workspace.toggle_special(\"$SPECIAL\")" > /dev/null 2>&1 || true
+    fi
+  fi
+
 else
-  # Tiled -> Float, resize, and center (unpinned so Alt+Tab and workspaces work normally)
-  hyprctl dispatch "hl.dsp.window.float({ window = \"address:$addr\", action = \"toggle\" })" > /dev/null
-  hyprctl dispatch "hl.dsp.window.resize({ window = \"address:$addr\", x = $width, y = $height })" > /dev/null
-  hyprctl dispatch "hl.dsp.window.center({ window = \"address:$addr\" })" > /dev/null
+  # --- IN MAIN WORKSPACE: move window into the scratchpad and merge into stack ---
+
+  # Count existing windows in special workspace before moving
+  existing_count=$(hyprctl clients -j 2>/dev/null \
+    | jq "[.[] | select(.workspace.name == \"special:$SPECIAL\")] | length" 2>/dev/null || echo 0)
+
+  # Un-pin and un-float before moving (ensures clean group tiling)
+  if [[ "$active_pinned" == "true" ]]; then
+    hyprctl dispatch "hl.dsp.window.pin({ window = \"address:$active_addr\" })" > /dev/null
+  fi
+  if [[ "$active_floating" == "true" ]]; then
+    hyprctl dispatch "hl.dsp.window.float({ window = \"address:$active_addr\", action = \"toggle\" })" > /dev/null
+  fi
+
+  # Move the window into the scratchpad
+  hyprctl dispatch "hl.dsp.window.move({ window = \"address:$active_addr\", workspace = \"special:$SPECIAL\" })" > /dev/null
+
+  # Show the scratchpad if not already visible
+  special_visible=$(hyprctl monitors -j 2>/dev/null \
+    | jq 'any(.[]; .specialWorkspace.name == "special:'"$SPECIAL"'")' 2>/dev/null || echo false)
+  if [[ "$special_visible" != "true" ]]; then
+    hyprctl dispatch "hl.dsp.workspace.toggle_special(\"$SPECIAL\")" > /dev/null
+  fi
+
+  # Ensure the window is grouped into the stack
+  # If it was the first window, initialize a group
+  if [[ "$existing_count" -eq 0 ]]; then
+    hyprctl dispatch "hl.dsp.group.toggle()" > /dev/null 2>&1 || true
+  else
+    # If other windows exist, merge with adjacent group
+    hyprctl dispatch "hl.dsp.window.move({ into_group = \"l\" })" > /dev/null 2>&1 \
+      || hyprctl dispatch "hl.dsp.window.move({ into_group = \"r\" })" > /dev/null 2>&1 \
+      || hyprctl dispatch "hl.dsp.group.toggle()" > /dev/null 2>&1 || true
+  fi
 fi

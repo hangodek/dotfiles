@@ -32,9 +32,22 @@
 o.bind("SUPER + BRACKETRIGHT", "Expand window width (10%)", "resize-step expand")
 o.bind("SUPER + BRACKETLEFT", "Shrink window width (10%)", "resize-step shrink")
 
--- Centered floating window toggle (unpinned, Alt+Tab friendly, workspace scoped)
+-- Centered scratchpad window move (main workspace <-> special:center)
 hl.unbind("SUPER + O")
-o.bind("SUPER + O", "Centered float toggle", "float-center")
+o.bind("SUPER + O", "Move window to/from centered scratchpad", "float-center")
+
+-- Alt+F: Show/hide the centered scratchpad panel (like Zellij Alt+F)
+o.bind("ALT + F", "Toggle centered scratchpad", hl.dsp.workspace.toggle_special("center"))
+
+-- Toggle active window between Stacked (tab) and Split (side-by-side tile)
+hl.unbind("SUPER + G")
+o.bind("SUPER + G", "Toggle stacked/split window", "toggle-stack")
+
+-- Smart window navigation (switches left/right window on main workspace, or switches tabs in scratchpad stack)
+hl.unbind("SUPER + LEFT")
+o.bind("SUPER + LEFT", "Focus left / previous tab", "nav-window left")
+hl.unbind("SUPER + RIGHT")
+o.bind("SUPER + RIGHT", "Focus right / next tab", "nav-window right")
 
 -- Original DHH pinned pop-out (sticky across all workspaces + always on top for PiP)
 o.bind("SUPER + SHIFT + O", "Pop window out (float & pin)", "omarchy-hyprland-window-pop")

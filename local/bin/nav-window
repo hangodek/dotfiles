@@ -1,0 +1,74 @@
+#!/bin/bash
+# Smart window navigation:
+# - Across normal tiled windows, focuses directionally (l/r/u/d).
+# - Inside a tab stack (group), steps through tabs smoothly.
+# - At the edge of a tab stack (first tab going left, or last tab going right),
+#   smoothly jumps out to the adjacent split window!
+# - If single window in a group (e.g. after popping out another window with Super+G),
+#   navigates directionally without getting trapped.
+
+set -euo pipefail
+
+dir=${1:-left}
+
+active=$(hyprctl activewindow -j 2>/dev/null || true)
+[[ -n "$active" ]] || exit 0
+
+addr=$(echo "$active" | jq -r '.address // empty')
+grouped_json=$(echo "$active" | jq -c '.grouped // []')
+grouped_len=$(echo "$grouped_json" | jq 'length')
+
+case "$dir" in
+  left|l)
+    if [[ "$grouped_len" -gt 1 ]]; then
+      curr_idx=$(echo "$grouped_json" | jq "index(\"$addr\") // 0")
+      if [[ "$curr_idx" -gt 0 ]]; then
+        # Step to previous tab inside group
+        hyprctl dispatch "hl.dsp.group.prev()" > /dev/null
+        exit 0
+      fi
+    fi
+    # At first tab (or not multi-tab grouped) -> attempt to focus left window
+    hyprctl dispatch "hl.dsp.focus({ direction = \"l\" })" > /dev/null
+    
+    # If focus didn't move to another window and we are in a multi-tab group, wrap around tab
+    if [[ "$grouped_len" -gt 1 ]]; then
+      new_active=$(hyprctl activewindow -j 2>/dev/null || true)
+      new_addr=$(echo "$new_active" | jq -r '.address // empty')
+      if [[ "$new_addr" == "$addr" ]]; then
+        hyprctl dispatch "hl.dsp.group.prev()" > /dev/null
+      fi
+    fi
+    ;;
+
+  right|r)
+    if [[ "$grouped_len" -gt 1 ]]; then
+      curr_idx=$(echo "$grouped_json" | jq "index(\"$addr\") // 0")
+      max_idx=$(( grouped_len - 1 ))
+      if [[ "$curr_idx" -lt "$max_idx" ]]; then
+        # Step to next tab inside group
+        hyprctl dispatch "hl.dsp.group.next()" > /dev/null
+        exit 0
+      fi
+    fi
+    # At last tab (or not multi-tab grouped) -> attempt to focus right window
+    hyprctl dispatch "hl.dsp.focus({ direction = \"r\" })" > /dev/null
+    
+    # If focus didn't move to another window and we are in a multi-tab group, wrap around tab
+    if [[ "$grouped_len" -gt 1 ]]; then
+      new_active=$(hyprctl activewindow -j 2>/dev/null || true)
+      new_addr=$(echo "$new_active" | jq -r '.address // empty')
+      if [[ "$new_addr" == "$addr" ]]; then
+        hyprctl dispatch "hl.dsp.group.next()" > /dev/null
+      fi
+    fi
+    ;;
+
+  up|u)
+    hyprctl dispatch "hl.dsp.focus({ direction = \"u\" })" > /dev/null
+    ;;
+
+  down|d)
+    hyprctl dispatch "hl.dsp.focus({ direction = \"d\" })" > /dev/null
+    ;;
+esac

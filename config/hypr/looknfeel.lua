@@ -71,12 +71,20 @@ hl.animation({ leaf = "windowsMove", enabled = true, speed = 4.2, bezier = "over
 -- Smooth window focus cross-fade
 hl.animation({ leaf = "fadeSwitch", enabled = true, speed = 3.2, bezier = "smoothOut" })
 
+-- Smooth scratchpad transition animation (tuned in & smooth out)
+hl.animation({ leaf = "specialWorkspace", enabled = true, speed = 4.5, bezier = "smoothOut", style = "slidevert" })
+hl.animation({ leaf = "specialWorkspaceIn", enabled = true, speed = 4.0, bezier = "overshoot", style = "slidevert" })
+hl.animation({ leaf = "specialWorkspaceOut", enabled = true, speed = 4.8, bezier = "smoothOut", style = "slidevert" })
+
 -- Subtle modern corner rounding and inactive window dimming
 hl.config({
   decoration = {
     rounding = 8,
     dim_inactive = true,
     dim_strength = 0.1,
+  },
+  dwindle = {
+    special_scale_factor = 0.85,
   },
 })
 
