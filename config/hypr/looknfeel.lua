@@ -49,7 +49,11 @@
 --   },
 -- })
 
--- Enable smooth workspace transition animation (Classic Slide)
+-- Custom modern Bezier curves
+hl.curve("overshoot", { type = "bezier", points = { { 0.05, 0.9 }, { 0.1, 1.05 } } })
+hl.curve("smoothOut", { type = "bezier", points = { { 0.16, 1 }, { 0.3, 1 } } })
+
+-- Smooth workspace transition animation (Classic Slide)
 hl.animation({
   leaf = "workspaces",
   enabled = true,
@@ -57,4 +61,23 @@ hl.animation({
   bezier = "easeOutQuint",
   style = "slide",
 })
+
+-- Fluid window animations (open, close, splits, resize, moves)
+hl.animation({ leaf = "windows", enabled = true, speed = 4.2, bezier = "overshoot" })
+hl.animation({ leaf = "windowsIn", enabled = true, speed = 3.8, bezier = "overshoot", style = "popin 82%" })
+hl.animation({ leaf = "windowsOut", enabled = true, speed = 2.8, bezier = "smoothOut", style = "popin 82%" })
+hl.animation({ leaf = "windowsMove", enabled = true, speed = 4.2, bezier = "overshoot" })
+
+-- Smooth window focus cross-fade
+hl.animation({ leaf = "fadeSwitch", enabled = true, speed = 3.2, bezier = "smoothOut" })
+
+-- Subtle modern corner rounding and inactive window dimming
+hl.config({
+  decoration = {
+    rounding = 8,
+    dim_inactive = true,
+    dim_strength = 0.1,
+  },
+})
+
 
