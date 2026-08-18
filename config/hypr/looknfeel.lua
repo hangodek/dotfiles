@@ -48,3 +48,13 @@
 --     column_width = 0.97,
 --   },
 -- })
+
+-- Enable smooth workspace transition animation (Classic Slide)
+hl.animation({
+  leaf = "workspaces",
+  enabled = true,
+  speed = 4,
+  bezier = "easeOutQuint",
+  style = "slide",
+})
+
