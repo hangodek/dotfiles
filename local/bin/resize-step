@@ -9,10 +9,13 @@ action=${1:-}
 ratio=${2:-0.10}
 
 [[ $action == "expand" || $action == "shrink" ]] || {
-  echo "Usage: resize-step expand|shrink [ratio]" >&2; exit 1
+  echo "Usage: resize-step expand|shrink [ratio]" >&2
+  exit 1
 }
 
-active=$(hyprctl activewindow -j)
+active=$(hyprctl activewindow -j 2>/dev/null || true)
+[[ -n $active ]] || exit 0
+
 address=$(jq -r '.address // empty' <<< "$active")
 [[ -n $address ]] || exit 0   # no active window, silent no-op
 
@@ -25,7 +28,7 @@ monitor_width=$(hyprctl monitors -j \
 step=$(awk "BEGIN { printf \"%d\", $monitor_width * $ratio }")
 
 if [[ $action == "expand" ]]; then
-  hyprctl dispatch resizeactive "$step" 0 > /dev/null
+  hyprctl dispatch "hl.dsp.window.resize({ x = $step, y = 0, relative = true })" > /dev/null
 else
-  hyprctl dispatch resizeactive "-$step" 0 > /dev/null
+  hyprctl dispatch "hl.dsp.window.resize({ x = -$step, y = 0, relative = true })" > /dev/null
 fi
