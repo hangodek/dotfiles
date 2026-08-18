@@ -32,3 +32,11 @@
 o.bind("SUPER + BRACKETRIGHT", "Expand window width (10%)", "resize-step expand")
 o.bind("SUPER + BRACKETLEFT", "Shrink window width (10%)", "resize-step shrink")
 
+-- Centered floating window toggle (unpinned, Alt+Tab friendly, workspace scoped)
+hl.unbind("SUPER + O")
+o.bind("SUPER + O", "Centered float toggle", "float-center")
+
+-- Original DHH pinned pop-out (sticky across all workspaces + always on top for PiP)
+o.bind("SUPER + SHIFT + O", "Pop window out (float & pin)", "omarchy-hyprland-window-pop")
+
+

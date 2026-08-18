@@ -1,0 +1,32 @@
+#!/bin/bash
+# Toggle focused window between tiled and centered floating (without pinning).
+# Usage: float-center [width] [height]
+
+set -euo pipefail
+
+width=${1:-1300}
+height=${2:-900}
+
+active=$(hyprctl activewindow -j 2>/dev/null || true)
+[[ -n $active ]] || exit 0
+
+addr=$(jq -r '.address // empty' <<< "$active")
+[[ -n $addr ]] || exit 0
+
+floating=$(jq -r '.floating' <<< "$active")
+pinned=$(jq -r '.pinned' <<< "$active")
+
+# If pinned, unpin it first
+if [[ $pinned == "true" ]]; then
+  hyprctl dispatch "hl.dsp.window.pin({ window = \"address:$addr\" })" > /dev/null
+fi
+
+if [[ $floating == "true" ]]; then
+  # Already floating -> Snap back to tiled grid
+  hyprctl dispatch "hl.dsp.window.float({ window = \"address:$addr\", action = \"toggle\" })" > /dev/null
+else
+  # Tiled -> Float, resize, and center (unpinned so Alt+Tab and workspaces work normally)
+  hyprctl dispatch "hl.dsp.window.float({ window = \"address:$addr\", action = \"toggle\" })" > /dev/null
+  hyprctl dispatch "hl.dsp.window.resize({ window = \"address:$addr\", x = $width, y = $height })" > /dev/null
+  hyprctl dispatch "hl.dsp.window.center({ window = \"address:$addr\" })" > /dev/null
+fi

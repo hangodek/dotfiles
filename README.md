@@ -24,6 +24,7 @@ Personal configuration and customizations for [Omarchy Linux](https://omarchy.or
 │   └── starship.toml            # Starship prompt configuration
 └── local/
     └── bin/
+        ├── float-center         # Centered float toggle helper script
         └── resize-step          # Step-based window resize helper script
 ```
 
@@ -33,6 +34,9 @@ Personal configuration and customizations for [Omarchy Linux](https://omarchy.or
 | :--- | :--- |
 | `SUPER + ]` | **Expand focused window** width by 10% of monitor width |
 | `SUPER + [` | **Shrink focused window** width by 10% of monitor width |
+| `SUPER + O` | **Toggle centered floating window** (unpinned, Alt+Tab friendly) |
+| `SUPER + SHIFT + O` | **Pop window out** (pinned sticky widget + always on top for PiP) |
+
 
 ## Quick Restore (Fresh Install)
 
