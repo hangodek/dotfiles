@@ -25,5 +25,6 @@ require("hypr.autostart")
 -- Toggle config flags dynamically.
 require("default.hypr.toggles")
 
--- Add any other personal Hyprland configuration below.
--- o.window("qemu", { workspace = "5" })
+-- Automatically group/stack all windows opened in the centered scratchpad
+o.window({ workspace = "special:center" }, { group = "set" })
+o.window({ workspace = "name:special:center" }, { group = "set" })

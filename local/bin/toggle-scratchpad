@@ -1,7 +1,8 @@
 #!/bin/bash
 # Alt+F: Smart toggle for centered scratchpad (special:center).
 # - If scratchpad contains windows: toggles visibility.
-# - If scratchpad is empty: shows scratchpad and immediately opens the Apps Menu.
+# - If scratchpad is empty: shows scratchpad and immediately opens the Apps Menu,
+#   ensuring the launched app is automatically grouped/stacked by default.
 
 set -euo pipefail
 
@@ -25,6 +26,23 @@ else
   if [[ "$special_visible" == "false" ]]; then
     hyprctl dispatch "hl.dsp.workspace.toggle_special(\"$SPECIAL\")" > /dev/null
   fi
+
+  # Launch a lightweight watcher to auto-group the newly spawned window in special:center
+  (
+    for (( i=0; i<40; i++ )); do
+      sleep 0.15
+      active=$(hyprctl activewindow -j 2>/dev/null || true)
+      ws=$(echo "$active" | jq -r '.workspace.name // empty')
+      if [[ "$ws" == "special:$SPECIAL" ]]; then
+        is_grp=$(echo "$active" | jq '.grouped | length')
+        if [[ "$is_grp" -eq 0 ]]; then
+          hyprctl dispatch "hl.dsp.group.toggle()" > /dev/null 2>&1 || true
+        fi
+        break
+      fi
+    done
+  ) >/dev/null 2>&1 &
+
   # Launch Apps Menu
   omarchy-menu toggle apps > /dev/null 2>&1 || true
 fi
