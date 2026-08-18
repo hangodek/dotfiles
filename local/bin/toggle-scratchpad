@@ -1,0 +1,30 @@
+#!/bin/bash
+# Alt+F: Smart toggle for centered scratchpad (special:center).
+# - If scratchpad contains windows: toggles visibility.
+# - If scratchpad is empty: shows scratchpad and immediately opens the Apps Menu.
+
+set -euo pipefail
+
+SPECIAL="center"
+
+# Count windows residing in special:center
+special_windows=$(hyprctl clients -j 2>/dev/null \
+  | jq "[.[] | select(.workspace.name == \"special:$SPECIAL\")] | length" 2>/dev/null || echo 0)
+
+# Check if special:center is currently visible on any monitor
+special_visible="false"
+if hyprctl monitors -j 2>/dev/null | jq -e '.[].specialWorkspace.name == "special:'"$SPECIAL"'"' >/dev/null 2>&1; then
+  special_visible="true"
+fi
+
+if [[ "$special_windows" -gt 0 ]]; then
+  # Scratchpad has active windows -> standard toggle
+  hyprctl dispatch "hl.dsp.workspace.toggle_special(\"$SPECIAL\")" > /dev/null
+else
+  # Scratchpad is empty -> open scratchpad & launch Omarchy Apps Menu
+  if [[ "$special_visible" == "false" ]]; then
+    hyprctl dispatch "hl.dsp.workspace.toggle_special(\"$SPECIAL\")" > /dev/null
+  fi
+  # Launch Apps Menu
+  omarchy-menu toggle apps > /dev/null 2>&1 || true
+fi

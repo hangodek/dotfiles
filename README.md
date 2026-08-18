@@ -10,6 +10,8 @@ Personal configuration and customizations for [Omarchy Linux](https://omarchy.or
   - Zellij-style floating workspace overlay (`special_scale_factor = 0.85`) with centered margins.
   - Windows automatically open and group at **100% full container size** with native tab bars.
   - Isolated `Alt + Tab` cycle (scratchpad windows never pollute the main workspace).
+- **Auto App Launcher on Empty Scratchpad**:
+  - Pressing `Alt + F` when the scratchpad is empty automatically brings up the **Omarchy Apps Menu**, launching any chosen app directly into the centered scratchpad stack.
 - **Hybrid Layout Support**:
   - Keep apps (like Spotify or documentation) in clean stacked tabs while splitting out other apps (like side-by-side terminals).
 - **Two-Way Stack ↔ Split Switch (`Super + G`)**:
@@ -44,6 +46,7 @@ Personal configuration and customizations for [Omarchy Linux](https://omarchy.or
 └── local/
     └── bin/
         ├── float-center         # Centered scratchpad manager (Super+O)
+        ├── toggle-scratchpad    # Smart scratchpad toggle + app launcher (Alt+F)
         ├── toggle-stack         # Two-way stack ↔ split toggle (Super+G)
         ├── nav-window           # Smart boundary-aware tab & tile navigation
         └── resize-step          # Step-based window resize helper script
@@ -55,7 +58,7 @@ Personal configuration and customizations for [Omarchy Linux](https://omarchy.or
 
 | Shortcut | Description | Context |
 | :--- | :--- | :--- |
-| `ALT + F` | **Toggle scratchpad overlay** (Show / Hide session) | Anywhere |
+| `ALT + F` | **Toggle scratchpad overlay** (shows/hides, or opens App Menu if empty) | Anywhere |
 | `SUPER + O` | **Move window to/from scratchpad** (joins stack or ejects to main) | Main / Scratchpad |
 | `SUPER + G` | **Toggle Stack ↔ Split** (Pop tab out to tile / merge window into stack) | Scratchpad / Main |
 | `SUPER + LEFT` | **Focus left / Previous tab** (smart boundary-aware navigation) | Scratchpad / Main |
@@ -70,6 +73,7 @@ Personal configuration and customizations for [Omarchy Linux](https://omarchy.or
 
 | Script | Purpose |
 | :--- | :--- |
+| `toggle-scratchpad` | Handles `Alt + F` toggling and automatically triggers the Apps Menu when the scratchpad is empty. |
 | `float-center` | Manages moving windows between main workspaces and `special:center`, ensuring auto-grouping and auto-closing when empty. |
 | `toggle-stack` | Intelligently converts tabs into side-by-side split tiles (`out_of_group`) and merges standalone split windows back into existing stacks. |
 | `nav-window` | Provides smooth navigation that traverses tabs within groups and jumps across split boundaries. |

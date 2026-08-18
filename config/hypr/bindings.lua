@@ -36,8 +36,8 @@ o.bind("SUPER + BRACKETLEFT", "Shrink window width (10%)", "resize-step shrink")
 hl.unbind("SUPER + O")
 o.bind("SUPER + O", "Move window to/from centered scratchpad", "float-center")
 
--- Alt+F: Show/hide the centered scratchpad panel (like Zellij Alt+F)
-o.bind("ALT + F", "Toggle centered scratchpad", hl.dsp.workspace.toggle_special("center"))
+-- Alt+F: Show/hide the centered scratchpad panel (launches app menu if empty)
+o.bind("ALT + F", "Toggle centered scratchpad", "toggle-scratchpad")
 
 -- Toggle active window between Stacked (tab) and Split (side-by-side tile)
 hl.unbind("SUPER + G")
