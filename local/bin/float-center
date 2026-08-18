@@ -74,13 +74,10 @@ else
   fi
 
   # Ensure the window is grouped into the stack
-  # If it was the first window, initialize a group
   if [[ "$existing_count" -eq 0 ]]; then
     hyprctl dispatch "hl.dsp.group.toggle()" > /dev/null 2>&1 || true
   else
-    # If other windows exist, merge with adjacent group
-    hyprctl dispatch "hl.dsp.window.move({ into_group = \"l\" })" > /dev/null 2>&1 \
-      || hyprctl dispatch "hl.dsp.window.move({ into_group = \"r\" })" > /dev/null 2>&1 \
-      || hyprctl dispatch "hl.dsp.group.toggle()" > /dev/null 2>&1 || true
+    # Merge into the existing stack on the scratchpad workspace
+    toggle-stack || true
   fi
 fi
