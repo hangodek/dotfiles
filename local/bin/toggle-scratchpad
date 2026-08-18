@@ -3,7 +3,7 @@
 # - If scratchpad contains windows: toggles visibility.
 # - If scratchpad is empty: brings up the Apps Menu on the current workspace,
 #   and when an app is launched, automatically moves it into special:center,
-#   opens the scratchpad, and groups it into a stack.
+#   ensures the scratchpad is open, and stacks it.
 # - If user presses Esc / cancels the menu: current workspace remains 100% untouched.
 
 set -euo pipefail
@@ -33,10 +33,19 @@ else
       new_addr=$(echo "$after_clients" | jq -r '.[].address' | sort | comm -13 <(echo "$before_addrs") - | head -n1 || true)
 
       if [[ -n "$new_addr" ]]; then
-        # A new app was launched! Move it into special:center and show the scratchpad
+        # A new app was launched! Move it into special:center
         hyprctl dispatch "hl.dsp.window.move({ window = \"address:$new_addr\", workspace = \"special:$SPECIAL\" })" > /dev/null 2>&1 || true
-        hyprctl dispatch "hl.dsp.workspace.toggle_special(\"$SPECIAL\")" > /dev/null 2>&1 || true
-        hyprctl dispatch "hl.dsp.group.toggle()" > /dev/null 2>&1 || true
+
+        # Ensure special:center is visible (do NOT blind toggle if already shown by window.move)
+        if ! hyprctl monitors -j 2>/dev/null | jq -e '.[].specialWorkspace.name == "special:'"$SPECIAL"'"' >/dev/null 2>&1; then
+          hyprctl dispatch "hl.dsp.workspace.toggle_special(\"$SPECIAL\")" > /dev/null 2>&1 || true
+        fi
+
+        # Ensure the window is grouped into a stack if not already
+        is_grp=$(hyprctl clients -j 2>/dev/null | jq "[.[] | select(.address == \"$new_addr\")] | .[0].grouped | length" 2>/dev/null || echo 0)
+        if [[ "$is_grp" -eq 0 ]]; then
+          hyprctl dispatch "hl.dsp.group.toggle()" > /dev/null 2>&1 || true
+        fi
         break
       fi
     done
