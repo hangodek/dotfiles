@@ -73,6 +73,7 @@ Personal configuration and customizations for [Omarchy Linux](https://omarchy.or
 
 | Script | Purpose |
 | :--- | :--- |
+| `powerprofilesctl` | Wrapper around power-profiles-daemon / tuned that enables instant single-click power profile switching. |
 | `toggle-scratchpad` | Handles `Alt + F` toggling and automatically triggers the Apps Menu when the scratchpad is empty. |
 | `float-center` | Manages moving windows between main workspaces and `special:center`, ensuring auto-grouping and auto-closing when empty. |
 | `toggle-stack` | Intelligently converts tabs into side-by-side split tiles (`out_of_group`) and merges standalone split windows back into existing stacks. |

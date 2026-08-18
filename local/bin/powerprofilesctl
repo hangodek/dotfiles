@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+# Wrapper around power-profiles-daemon / tuned DBus interface.
+# Fixes single-click power profile switching by setting ActiveProfile directly on DBus.
+
+set -euo pipefail
+
+PPD_BUS="net.hadess.PowerProfiles"
+PPD_OBJ="/net/hadess/PowerProfiles"
+PPD_IFACE="net.hadess.PowerProfiles"
+ALT_PPD_BUS="org.freedesktop.UPower.PowerProfiles"
+ALT_PPD_OBJ="/org/freedesktop/UPower/PowerProfiles"
+ALT_PPD_IFACE="org.freedesktop.UPower.PowerProfiles"
+
+ORDER=(performance balanced power-saver)
+
+usage() {
+  echo "Usage: powerprofilesctl list|get|set <profile>" >&2
+  exit 1
+}
+
+ppd_get_all() {
+  busctl --system --json=short call "$PPD_BUS" "$PPD_OBJ" org.freedesktop.DBus.Properties GetAll s "$PPD_IFACE" 2>/dev/null \
+    || busctl --system --json=short call "$ALT_PPD_BUS" "$ALT_PPD_OBJ" org.freedesktop.DBus.Properties GetAll s "$ALT_PPD_IFACE" 2>/dev/null
+}
+
+cmd_list() {
+  local json active name
+  json=$(ppd_get_all)
+  [[ -n $json ]] || { echo "No power profile daemon found" >&2; exit 1; }
+  active=$(jq -r '.data[0].ActiveProfile.data' <<<"$json")
+  for name in "${ORDER[@]}"; do
+    if jq -e --arg n "$name" '.data[0].Profiles.data[] | select(.Profile.data == $n)' <<<"$json" >/dev/null 2>&1; then
+      if [[ $name == "$active" ]]; then
+        printf '* %s:\n    Driver: tuned\n' "$name"
+      else
+        printf '  %s:\n    Driver: tuned\n' "$name"
+      fi
+    fi
+  done
+}
+
+cmd_get() {
+  local active
+  active=$(ppd_get_all | jq -r '.data[0].ActiveProfile.data' 2>/dev/null) || { echo "No power profile daemon found" >&2; exit 1; }
+  printf '%s\n' "$active"
+}
+
+cmd_set() {
+  local profile="$1"
+  case "$profile" in
+    performance|power-saver|balanced) ;;
+    *) echo "Power profile not found: $profile" >&2; exit 1 ;;
+  esac
+
+  # Set ActiveProfile directly on DBus - immediately switches tuned and notifies all listeners
+  busctl --system set-property "$PPD_BUS" "$PPD_OBJ" "$PPD_IFACE" ActiveProfile s "$profile" 2>/dev/null \
+    || busctl --system set-property "$ALT_PPD_BUS" "$ALT_PPD_OBJ" "$ALT_PPD_IFACE" ActiveProfile s "$profile" 2>/dev/null
+}
+
+[[ $# -ge 1 ]] || usage
+
+case "$1" in
+  list) cmd_list ;;
+  get) cmd_get ;;
+  set) [[ $# -eq 2 ]] || usage; cmd_set "$2" ;;
+  *) usage ;;
+esac
