@@ -1,0 +1,68 @@
+#!/bin/bash
+# Restore personal Omarchy dotfiles after a fresh install or update.
+# Usage: bash ~/dotfiles/bootstrap.sh
+
+set -euo pipefail
+
+DOTFILES="$(cd "$(dirname "$0")" && pwd)"
+
+echo "==> Restoring Omarchy personal dotfiles..."
+
+echo "--> Linking Hyprland configs..."
+mkdir -p "$HOME/.config/hypr"
+for f in bindings.lua monitors.lua input.lua looknfeel.lua autostart.lua hyprland.lua; do
+  src="$DOTFILES/config/hypr/$f"
+  dst="$HOME/.config/hypr/$f"
+  if [[ -f $src ]]; then
+    if [[ -f $dst && ! -L $dst ]]; then
+      cp "$dst" "$dst.bak.$(date +%s)"
+    fi
+    ln -sf "$src" "$dst"
+    echo "    linked hypr/$f"
+  fi
+done
+
+echo "--> Linking Omarchy shell and extensions..."
+mkdir -p "$HOME/.config/omarchy/extensions"
+if [[ -f "$DOTFILES/config/omarchy/shell.json" ]]; then
+  ln -sf "$DOTFILES/config/omarchy/shell.json" "$HOME/.config/omarchy/shell.json"
+  echo "    linked omarchy/shell.json"
+fi
+
+if [[ -f "$DOTFILES/config/omarchy/extensions/omarchy-menu.jsonc" ]]; then
+  ln -sf "$DOTFILES/config/omarchy/extensions/omarchy-menu.jsonc" "$HOME/.config/omarchy/extensions/omarchy-menu.jsonc"
+  echo "    linked omarchy/extensions/omarchy-menu.jsonc"
+fi
+
+echo "--> Linking extra configs..."
+if [[ -f "$DOTFILES/config/starship.toml" ]]; then
+  ln -sf "$DOTFILES/config/starship.toml" "$HOME/.config/starship.toml"
+  echo "    linked starship.toml"
+fi
+
+if [[ -f "$DOTFILES/config/git/config" ]]; then
+  mkdir -p "$HOME/.config/git"
+  ln -sf "$DOTFILES/config/git/config" "$HOME/.config/git/config"
+  echo "    linked git/config"
+fi
+
+echo "--> Installing personal scripts..."
+mkdir -p "$HOME/.local/bin"
+for s in "$DOTFILES/local/bin/"*; do
+  if [[ -f $s ]]; then
+    base=$(basename "$s")
+    ln -sf "$s" "$HOME/.local/bin/$base"
+    chmod +x "$s"
+    echo "    linked ~/.local/bin/$base"
+  fi
+done
+
+echo "--> Validating Hyprland config..."
+if command -v hyprctl >/dev/null 2>&1; then
+  hyprctl reload >/dev/null 2>&1 || true
+  if hyprctl configerrors 2>&1 | grep -q "ok"; then
+    echo "    Hyprland config validated successfully."
+  fi
+fi
+
+echo "==> All personal configs and scripts successfully restored!"

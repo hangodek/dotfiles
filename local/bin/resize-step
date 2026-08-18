@@ -1,0 +1,31 @@
+#!/bin/bash
+# Resize the active Hyprland tiled window by a percentage of the monitor width.
+# Usage: resize-step expand|shrink [ratio]
+#   ratio defaults to 0.10 (10%). Example: resize-step expand 0.05
+
+set -euo pipefail
+
+action=${1:-}
+ratio=${2:-0.10}
+
+[[ $action == "expand" || $action == "shrink" ]] || {
+  echo "Usage: resize-step expand|shrink [ratio]" >&2; exit 1
+}
+
+active=$(hyprctl activewindow -j)
+address=$(jq -r '.address // empty' <<< "$active")
+[[ -n $address ]] || exit 0   # no active window, silent no-op
+
+monitor_id=$(jq -r '.monitor // empty' <<< "$active")
+[[ -n $monitor_id ]] || exit 0
+
+monitor_width=$(hyprctl monitors -j \
+  | jq -r --argjson id "$monitor_id" '.[] | select(.id == $id) | .width')
+
+step=$(awk "BEGIN { printf \"%d\", $monitor_width * $ratio }")
+
+if [[ $action == "expand" ]]; then
+  hyprctl dispatch resizeactive "$step" 0 > /dev/null
+else
+  hyprctl dispatch resizeactive "-$step" 0 > /dev/null
+fi
