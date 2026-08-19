@@ -6,9 +6,9 @@ Personal configuration and customizations for [Omarchy Linux](https://omarchy.or
 
 ## Features & Highlights
 
-- **Vertical Stacked Deck (`special:center`)**:
-  - Zellij-style floating workspace overlay (`special_scale_factor = 0.85`) with vertical stacked card headers (`stacked = true`).
-  - Windows automatically open and stack vertically at **100% full container size**.
+- **Clean Stacked Scratchpad (`special:center`)**:
+  - Pure, distraction-free floating overlay (`special_scale_factor = 0.85`) with **zero topbars/tabbars**.
+  - Windows stack directly on top of each other at **100% full container size**.
   - Isolated `Alt + Tab` cycle (scratchpad windows never pollute the main workspace).
 - **Auto App Launcher on Empty Scratchpad**:
   - Pressing `Alt + F` when the scratchpad is empty automatically brings up the **Omarchy Apps Menu**, launching any chosen app directly into the centered scratchpad stack.

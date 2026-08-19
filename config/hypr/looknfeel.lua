@@ -76,17 +76,11 @@ hl.animation({ leaf = "specialWorkspace", enabled = true, speed = 4.5, bezier = 
 hl.animation({ leaf = "specialWorkspaceIn", enabled = true, speed = 4.0, bezier = "overshoot", style = "slidevert" })
 hl.animation({ leaf = "specialWorkspaceOut", enabled = true, speed = 4.8, bezier = "smoothOut", style = "slidevert" })
 
--- Subtle modern corner rounding, inactive window dimming, and Zellij-style vertical stack
+-- Subtle modern corner rounding, inactive window dimming, and clean tabless stacked windows
 hl.config({
   group = {
     groupbar = {
-      stacked = true,
-      height = 24,
-      font_size = 11,
-      font_family = "monospace",
-      render_titles = true,
-      gradients = true,
-      indicator_height = 2,
+      enabled = false,
     },
   },
   decoration = {
