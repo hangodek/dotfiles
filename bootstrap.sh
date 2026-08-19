@@ -88,11 +88,11 @@ if command -v pacman >/dev/null 2>&1; then
   sudo systemctl enable --now rtkit-daemon.service >/dev/null 2>&1 || true
 fi
 
-echo "--> Configuring default web browser (LibreWolf)..."
-if command -v librewolf >/dev/null 2>&1; then
-  env -u BROWSER xdg-settings set default-web-browser librewolf.desktop >/dev/null 2>&1 || true
-  xdg-mime default librewolf.desktop x-scheme-handler/http >/dev/null 2>&1 || true
-  xdg-mime default librewolf.desktop x-scheme-handler/https >/dev/null 2>&1 || true
+echo "--> Configuring default web browser (Microsoft Edge)..."
+if command -v microsoft-edge-stable >/dev/null 2>&1; then
+  env -u BROWSER xdg-settings set default-web-browser microsoft-edge.desktop >/dev/null 2>&1 || true
+  xdg-mime default microsoft-edge.desktop x-scheme-handler/http >/dev/null 2>&1 || true
+  xdg-mime default microsoft-edge.desktop x-scheme-handler/https >/dev/null 2>&1 || true
 fi
 
 echo "--> Ensuring TCP BBRv3 network congestion control..."

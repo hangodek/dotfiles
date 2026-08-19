@@ -83,8 +83,6 @@ Personal configuration and customizations for [Omarchy Linux](https://omarchy.or
 | `powerprofilesctl` | Wrapper around power-profiles-daemon / tuned that enables instant single-click power profile switching. |
 | `nav-window` | Provides smooth 2D navigation (slides between decks with Up/Down, navigates tiles with Left/Right). |
 | `resize-step` | Resizes the focused window in 10% monitor width increments. |
-| `omarchy-default-browser` | Extends Omarchy default browser selection with first-class LibreWolf support. |
-| `omarchy-install-browser` | Adds LibreWolf installation hook for `omarchy install browser librewolf`. |
 
 ---
 

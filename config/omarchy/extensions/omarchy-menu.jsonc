@@ -1,22 +1,3 @@
 {
-  // Extend the Quickshell Omarchy menu with full LibreWolf support.
-  "setup.default.browser.librewolf": {
-    "icon": "󰈹",
-    "label": "LibreWolf",
-    "when": "omarchy-cmd-present librewolf",
-    "checked": "[[ \"$(omarchy-default-browser)\" == \"librewolf\" ]]",
-    "action": "omarchy-default-browser librewolf"
-  },
-  "install.browser.librewolf": {
-    "icon": "󰈹",
-    "label": "LibreWolf",
-    "when": "! omarchy-pkg-present librewolf",
-    "action": "omarchy-launch-floating-terminal-with-presentation 'omarchy-install-browser librewolf'"
-  },
-  "remove.browser.librewolf": {
-    "icon": "󰈹",
-    "label": "LibreWolf",
-    "when": "omarchy-pkg-present librewolf",
-    "action": "omarchy-launch-floating-terminal-with-presentation 'omarchy-remove-browser librewolf'"
-  }
+  // Omarchy menu extensions.
 }
