@@ -5,12 +5,12 @@
 -- See https://wiki.hypr.land/Configuring/Basics/Variables/#input
 hl.config({
   input = {
-    -- Use multiple keyboard layouts and switch between them with Left Alt + Right Alt.
-    kb_layout = "us,dk,eu",
-    kb_options = "compose:caps,shift:both_capslock_cancel,grp:alts_toggle",
+    -- Standard US layout without dead keys for programming
+    kb_layout = "us",
+    kb_options = "compose:caps,shift:both_capslock_cancel",
 
-    -- Use a specific keyboard variant if needed (e.g. intl for international keyboards).
-    kb_variant = "intl",
+    -- No dead keys (instant quotes '', "", ``)
+    kb_variant = "",
 
     -- Change speed of keyboard repeat.
     repeat_rate = 40,
