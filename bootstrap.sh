@@ -82,6 +82,12 @@ if command -v hyprctl >/dev/null 2>&1; then
   fi
 fi
 
+echo "--> Ensuring core system real-time daemons (rtkit)..."
+if command -v pacman >/dev/null 2>&1; then
+  sudo pacman -S --needed --noconfirm rtkit >/dev/null 2>&1 || true
+  sudo systemctl enable --now rtkit-daemon.service >/dev/null 2>&1 || true
+fi
+
 if [[ "$INSTALL_CACHYOS" == "true" ]]; then
   echo ""
   echo "==> Triggering CachyOS Kernel & Performance Suite installation..."

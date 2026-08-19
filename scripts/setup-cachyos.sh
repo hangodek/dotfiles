@@ -69,10 +69,11 @@ pacman -S --needed --noconfirm \
   cachyos-settings \
   cachyos-hooks \
   ananicy-cpp \
-  cachyos-ananicy-rules
+  cachyos-ananicy-rules \
+  rtkit
 
 echo "==> [4/5] Enabling background optimization services..."
-systemctl enable --now ananicy-cpp.service >/dev/null 2>&1 || true
+systemctl enable --now ananicy-cpp.service rtkit-daemon.service >/dev/null 2>&1 || true
 
 echo "==> [5/5] Verifying Limine UKI kernel generation..."
 if [[ -d /boot/EFI/Linux ]]; then
