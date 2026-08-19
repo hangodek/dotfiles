@@ -95,6 +95,18 @@ if command -v librewolf >/dev/null 2>&1; then
   xdg-mime default librewolf.desktop x-scheme-handler/https >/dev/null 2>&1 || true
 fi
 
+echo "--> Ensuring TCP BBRv3 network congestion control..."
+if [[ -f /lib/modules/$(uname -r)/kernel/net/ipv4/tcp_bbr.ko.zst ]]; then
+  echo "tcp_bbr" | sudo tee /etc/modules-load.d/bbr.conf >/dev/null 2>&1 || true
+  sudo modprobe tcp_bbr 2>/dev/null || true
+  sudo tee /etc/sysctl.d/99-bbr.conf >/dev/null 2>&1 << 'EOF'
+net.core.default_qdisc = cake
+net.ipv4.tcp_congestion_control = bbr
+net.ipv4.tcp_fastopen = 3
+EOF
+  sudo sysctl -p /etc/sysctl.d/99-bbr.conf >/dev/null 2>&1 || true
+fi
+
 if [[ "$INSTALL_CACHYOS" == "true" ]]; then
   echo ""
   echo "==> Triggering CachyOS Kernel & Performance Suite installation..."

@@ -72,8 +72,21 @@ pacman -S --needed --noconfirm \
   cachyos-ananicy-rules \
   rtkit
 
-echo "==> [4/5] Enabling background optimization services..."
+echo "==> [4/5] Enabling background optimization services & TCP BBRv3..."
 systemctl enable --now ananicy-cpp.service rtkit-daemon.service >/dev/null 2>&1 || true
+
+# Load TCP BBRv3 kernel module and configure sysctl
+echo "tcp_bbr" > /etc/modules-load.d/bbr.conf
+modprobe tcp_bbr 2>/dev/null || true
+
+cat > /etc/sysctl.d/99-bbr.conf << 'EOF'
+# TCP BBRv3 + CAKE Queueing
+net.core.default_qdisc = cake
+net.ipv4.tcp_congestion_control = bbr
+net.ipv4.tcp_fastopen = 3
+EOF
+
+sysctl -p /etc/sysctl.d/99-bbr.conf >/dev/null 2>&1 || true
 
 echo "==> [5/5] Verifying Limine UKI kernel generation..."
 if [[ -d /boot/EFI/Linux ]]; then
