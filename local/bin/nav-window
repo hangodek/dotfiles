@@ -1,11 +1,9 @@
 #!/bin/bash
 # Smart window navigation:
 # - Across normal tiled windows, focuses directionally (l/r/u/d).
-# - Inside a tab stack (group), steps through tabs smoothly.
-# - At the edge of a tab stack (first tab going left, or last tab going right),
-#   smoothly jumps out to the adjacent split window!
-# - If single window in a group (e.g. after popping out another window with Super+G),
-#   navigates directionally without getting trapped.
+# - Inside a vertical stacked deck (Zellij style), Super+Up / Super+Down steps through the stack.
+# - At the boundary of the stack, jumps across to adjacent split windows.
+# - Super+Left / Super+Right moves horizontally across side-by-side columns without getting trapped.
 
 set -euo pipefail
 
@@ -19,19 +17,19 @@ grouped_json=$(echo "$active" | jq -c '.grouped // []')
 grouped_len=$(echo "$grouped_json" | jq 'length')
 
 case "$dir" in
-  left|l)
+  up|u)
     if [[ "$grouped_len" -gt 1 ]]; then
       curr_idx=$(echo "$grouped_json" | jq "index(\"$addr\") // 0")
       if [[ "$curr_idx" -gt 0 ]]; then
-        # Step to previous tab inside group
+        # Step up to previous card in the vertical stack
         hyprctl dispatch "hl.dsp.group.prev()" > /dev/null
         exit 0
       fi
     fi
-    # At first tab (or not multi-tab grouped) -> attempt to focus left window
-    hyprctl dispatch "hl.dsp.focus({ direction = \"l\" })" > /dev/null
-    
-    # If focus didn't move to another window and we are in a multi-tab group, wrap around tab
+    # At top card (or not multi-window grouped) -> attempt directional focus up
+    hyprctl dispatch "hl.dsp.focus({ direction = \"u\" })" > /dev/null
+
+    # If focus didn't move and we are in a multi-window stack, wrap around to bottom
     if [[ "$grouped_len" -gt 1 ]]; then
       new_active=$(hyprctl activewindow -j 2>/dev/null || true)
       new_addr=$(echo "$new_active" | jq -r '.address // empty')
@@ -41,20 +39,20 @@ case "$dir" in
     fi
     ;;
 
-  right|r)
+  down|d)
     if [[ "$grouped_len" -gt 1 ]]; then
       curr_idx=$(echo "$grouped_json" | jq "index(\"$addr\") // 0")
       max_idx=$(( grouped_len - 1 ))
       if [[ "$curr_idx" -lt "$max_idx" ]]; then
-        # Step to next tab inside group
+        # Step down to next card in the vertical stack
         hyprctl dispatch "hl.dsp.group.next()" > /dev/null
         exit 0
       fi
     fi
-    # At last tab (or not multi-tab grouped) -> attempt to focus right window
-    hyprctl dispatch "hl.dsp.focus({ direction = \"r\" })" > /dev/null
-    
-    # If focus didn't move to another window and we are in a multi-tab group, wrap around tab
+    # At bottom card (or not multi-window grouped) -> attempt directional focus down
+    hyprctl dispatch "hl.dsp.focus({ direction = \"d\" })" > /dev/null
+
+    # If focus didn't move and we are in a multi-window stack, wrap around to top
     if [[ "$grouped_len" -gt 1 ]]; then
       new_active=$(hyprctl activewindow -j 2>/dev/null || true)
       new_addr=$(echo "$new_active" | jq -r '.address // empty')
@@ -64,11 +62,13 @@ case "$dir" in
     fi
     ;;
 
-  up|u)
-    hyprctl dispatch "hl.dsp.focus({ direction = \"u\" })" > /dev/null
+  left|l)
+    # Move horizontally to column on the left
+    hyprctl dispatch "hl.dsp.focus({ direction = \"l\" })" > /dev/null
     ;;
 
-  down|d)
-    hyprctl dispatch "hl.dsp.focus({ direction = \"d\" })" > /dev/null
+  right|r)
+    # Move horizontally to column on the right
+    hyprctl dispatch "hl.dsp.focus({ direction = \"r\" })" > /dev/null
     ;;
 esac

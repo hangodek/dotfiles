@@ -6,18 +6,19 @@ Personal configuration and customizations for [Omarchy Linux](https://omarchy.or
 
 ## Features & Highlights
 
-- **Stacked Scratchpad Layer (`special:center`)**:
-  - Zellij-style floating workspace overlay (`special_scale_factor = 0.85`) with centered margins.
-  - Windows automatically open and group at **100% full container size** with native tab bars.
+- **Vertical Stacked Deck (`special:center`)**:
+  - Zellij-style floating workspace overlay (`special_scale_factor = 0.85`) with vertical stacked card headers (`stacked = true`).
+  - Windows automatically open and stack vertically at **100% full container size**.
   - Isolated `Alt + Tab` cycle (scratchpad windows never pollute the main workspace).
 - **Auto App Launcher on Empty Scratchpad**:
   - Pressing `Alt + F` when the scratchpad is empty automatically brings up the **Omarchy Apps Menu**, launching any chosen app directly into the centered scratchpad stack.
 - **Hybrid Layout Support**:
-  - Keep apps (like Spotify or documentation) in clean stacked tabs while splitting out other apps (like side-by-side terminals).
+  - Keep apps (like Spotify or documentation) in clean vertical stacked decks while splitting out other apps (like side-by-side terminals).
 - **Two-Way Stack ↔ Split Switch (`Super + G`)**:
-  - Pop any tab out of the stack into a side-by-side split tile, or merge any split window back into the stack.
-- **Smart Boundary-Aware Navigation**:
-  - `Super + Left` / `Super + Right` cycles tabs inside stacks, jumps out to adjacent split tiles at boundaries, and focuses tiled windows on main workspaces without getting trapped.
+  - Pop any card out of the stack into a side-by-side split tile, or merge any split window back into the stack.
+- **Intuitive 2D Navigation**:
+  - `Super + Up` / `Super + Down` cycles vertically through the stacked cards in the deck.
+  - `Super + Left` / `Super + Right` moves horizontally between side-by-side split columns.
 - **Tuned Animations**:
   - Responsive `overshoot` slide-in and fluid, gentle `smoothOut` slide-out transitions matching system rhythm.
 
@@ -31,7 +32,7 @@ Personal configuration and customizations for [Omarchy Linux](https://omarchy.or
 ├── config/
 │   ├── hypr/                    # Hyprland configurations
 │   │   ├── bindings.lua         # Custom keybindings & dispatcher overrides
-│   │   ├── looknfeel.lua        # Window decorations, gaps, special scale, animations
+│   │   ├── looknfeel.lua        # Window decorations, gaps, special scale, stacked groupbar, animations
 │   │   ├── monitors.lua         # Monitor & display configuration
 │   │   ├── input.lua            # Keyboard & mouse settings
 │   │   ├── autostart.lua        # Startup applications
@@ -48,7 +49,7 @@ Personal configuration and customizations for [Omarchy Linux](https://omarchy.or
         ├── float-center         # Centered scratchpad manager (Super+O)
         ├── toggle-scratchpad    # Smart scratchpad toggle + app launcher (Alt+F)
         ├── toggle-stack         # Two-way stack ↔ split toggle (Super+G)
-        ├── nav-window           # Smart boundary-aware tab & tile navigation
+        ├── nav-window           # Smart 2D navigation (Up/Down stack, Left/Right column)
         └── resize-step          # Step-based window resize helper script
 ```
 
@@ -60,9 +61,11 @@ Personal configuration and customizations for [Omarchy Linux](https://omarchy.or
 | :--- | :--- | :--- |
 | `ALT + F` | **Toggle scratchpad overlay** (shows/hides, or opens App Menu if empty) | Anywhere |
 | `SUPER + O` | **Move window to/from scratchpad** (joins stack or ejects to main) | Main / Scratchpad |
-| `SUPER + G` | **Toggle Stack ↔ Split** (Pop tab out to tile / merge window into stack) | Scratchpad / Main |
-| `SUPER + LEFT` | **Focus left / Previous tab** (smart boundary-aware navigation) | Scratchpad / Main |
-| `SUPER + RIGHT` | **Focus right / Next tab** (smart boundary-aware navigation) | Scratchpad / Main |
+| `SUPER + G` | **Toggle Stack ↔ Split** (Pop card out to tile / merge window into stack) | Scratchpad / Main |
+| `SUPER + UP` | **Cycle up** through vertical stacked deck / Focus window above | Scratchpad / Main |
+| `SUPER + DOWN` | **Cycle down** through vertical stacked deck / Focus window below | Scratchpad / Main |
+| `SUPER + LEFT` | **Focus left column** | Scratchpad / Main |
+| `SUPER + RIGHT` | **Focus right column** | Scratchpad / Main |
 | `SUPER + ]` | **Expand window width** by 10% of monitor width | Anywhere |
 | `SUPER + [` | **Shrink window width** by 10% of monitor width | Anywhere |
 | `SUPER + SHIFT + O`| **Pop window out** (pinned sticky widget + always on top for PiP) | Anywhere |
