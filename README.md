@@ -6,19 +6,17 @@ Personal configuration and customizations for [Omarchy Linux](https://omarchy.or
 
 ## Features & Highlights
 
-- **Clean Stacked Scratchpad (`special:center`)**:
-  - Pure, distraction-free floating overlay (`special_scale_factor = 0.85`) with **zero topbars/tabbars**.
-  - Windows stack directly on top of each other at **100% full container size**.
-  - Isolated `Alt + Tab` cycle (scratchpad windows never pollute the main workspace).
-- **Auto App Launcher on Empty Scratchpad**:
-  - Pressing `Alt + F` when the scratchpad is empty automatically brings up the **Omarchy Apps Menu**, launching any chosen app directly into the centered scratchpad stack.
-- **Hybrid Layout Support**:
-  - Keep apps (like Spotify or documentation) in clean vertical stacked decks while splitting out other apps (like side-by-side terminals).
-- **Two-Way Stack ↔ Split Switch (`Super + G`)**:
-  - Pop any card out of the stack into a side-by-side split tile, or merge any split window back into the stack.
-- **Intuitive 2D Navigation**:
-  - `Super + Up` / `Super + Down` cycles vertically through the stacked cards in the deck.
-  - `Super + Left` / `Super + Right` moves horizontally between side-by-side split columns.
+- **Independent Multi-Deck Scratchpads (`special:deck_*`)**:
+  - Each scratchpad deck is its own independent floating virtual workspace with **zero topbar/tabbar clutter**.
+  - **Full Tiling Support Inside Decks**: Inside any deck, press `Super + Return` to open a terminal on the right side-by-side!
+  - **Multi-Deck Switching**: Press `Super + Up` / `Super + Down` to slide smoothly between **Deck 1 ↔ Deck 2 ↔ Deck 3**!
+- **Instant New Deck Creation**:
+  - Press `Super + N` or `Alt + Shift + F` to create a brand new independent Scratchpad Deck with the App Launcher.
+- **Smart 2D Navigation**:
+  - Inside a scratchpad deck:
+    - `Super + Up` / `Super + Down`: Switches vertically between scratchpad decks.
+    - `Super + Left` / `Super + Right`: Focuses side-by-side split windows within the active deck.
+  - On main workspaces: Standard directional navigation across tiled windows.
 - **Tuned Animations**:
   - Responsive `overshoot` slide-in and fluid, gentle `smoothOut` slide-out transitions matching system rhythm.
 
@@ -32,7 +30,7 @@ Personal configuration and customizations for [Omarchy Linux](https://omarchy.or
 ├── config/
 │   ├── hypr/                    # Hyprland configurations
 │   │   ├── bindings.lua         # Custom keybindings & dispatcher overrides
-│   │   ├── looknfeel.lua        # Window decorations, gaps, special scale, stacked groupbar, animations
+│   │   ├── looknfeel.lua        # Window decorations, gaps, special scale, animations
 │   │   ├── monitors.lua         # Monitor & display configuration
 │   │   ├── input.lua            # Keyboard & mouse settings
 │   │   ├── autostart.lua        # Startup applications
@@ -46,10 +44,9 @@ Personal configuration and customizations for [Omarchy Linux](https://omarchy.or
 │   └── starship.toml            # Starship prompt configuration
 └── local/
     └── bin/
-        ├── float-center         # Centered scratchpad manager (Super+O)
-        ├── toggle-scratchpad    # Smart scratchpad toggle + app launcher (Alt+F)
-        ├── toggle-stack         # Two-way stack ↔ split toggle (Super+G)
-        ├── nav-window           # Smart 2D navigation (Up/Down stack, Left/Right column)
+        ├── scratchpad-deck      # Independent multi-deck scratchpad manager
+        ├── nav-window           # Smart 2D navigation (Up/Down decks, Left/Right tiles)
+        ├── powerprofilesctl     # Instant 1-click power profile switching via DBus
         └── resize-step          # Step-based window resize helper script
 ```
 
@@ -59,13 +56,14 @@ Personal configuration and customizations for [Omarchy Linux](https://omarchy.or
 
 | Shortcut | Description | Context |
 | :--- | :--- | :--- |
-| `ALT + F` | **Toggle scratchpad overlay** (shows/hides, or opens App Menu if empty) | Anywhere |
-| `SUPER + O` | **Move window to/from scratchpad** (joins stack or ejects to main) | Main / Scratchpad |
-| `SUPER + G` | **Toggle Stack ↔ Split** (Pop card out to tile / merge window into stack) | Scratchpad / Main |
-| `SUPER + UP` | **Cycle up** through vertical stacked deck / Focus window above | Scratchpad / Main |
-| `SUPER + DOWN` | **Cycle down** through vertical stacked deck / Focus window below | Scratchpad / Main |
-| `SUPER + LEFT` | **Focus left column** | Scratchpad / Main |
-| `SUPER + RIGHT` | **Focus right column** | Scratchpad / Main |
+| `ALT + F` | **Toggle active scratchpad deck** (shows/hides, or opens App Menu if empty) | Anywhere |
+| `SUPER + N` | **Create new scratchpad deck** (prompts App Menu to create next deck) | Anywhere |
+| `ALT + SHIFT + F` | **Create new scratchpad deck** (alternative shortcut) | Anywhere |
+| `SUPER + O` | **Move window to/from scratchpad deck** (joins deck or ejects to main) | Main / Scratchpad |
+| `SUPER + UP` | **Switch to previous scratchpad deck** / Focus window above | Scratchpad / Main |
+| `SUPER + DOWN` | **Switch to next scratchpad deck** / Focus window below | Scratchpad / Main |
+| `SUPER + LEFT` | **Focus left window** | Scratchpad / Main |
+| `SUPER + RIGHT` | **Focus right window** | Scratchpad / Main |
 | `SUPER + ]` | **Expand window width** by 10% of monitor width | Anywhere |
 | `SUPER + [` | **Shrink window width** by 10% of monitor width | Anywhere |
 | `SUPER + SHIFT + O`| **Pop window out** (pinned sticky widget + always on top for PiP) | Anywhere |
@@ -76,11 +74,9 @@ Personal configuration and customizations for [Omarchy Linux](https://omarchy.or
 
 | Script | Purpose |
 | :--- | :--- |
+| `scratchpad-deck` | Manages independent multi-deck floating workspaces (`special:deck_*`), deck switching, and app launcher hooks. |
 | `powerprofilesctl` | Wrapper around power-profiles-daemon / tuned that enables instant single-click power profile switching. |
-| `toggle-scratchpad` | Handles `Alt + F` toggling and automatically triggers the Apps Menu when the scratchpad is empty. |
-| `float-center` | Manages moving windows between main workspaces and `special:center`, ensuring auto-grouping and auto-closing when empty. |
-| `toggle-stack` | Intelligently converts tabs into side-by-side split tiles (`out_of_group`) and merges standalone split windows back into existing stacks. |
-| `nav-window` | Provides smooth navigation that traverses tabs within groups and jumps across split boundaries. |
+| `nav-window` | Provides smooth 2D navigation (slides between decks with Up/Down, navigates tiles with Left/Right). |
 | `resize-step` | Resizes the focused window in 10% monitor width increments. |
 
 ---

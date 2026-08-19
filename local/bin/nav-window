@@ -1,9 +1,10 @@
 #!/bin/bash
 # Smart window navigation:
-# - Across normal tiled windows, focuses directionally (l/r/u/d).
-# - Inside a vertical stacked deck (Zellij style), Super+Up / Super+Down steps through the stack.
-# - At the boundary of the stack, jumps across to adjacent split windows.
-# - Super+Left / Super+Right moves horizontally across side-by-side columns without getting trapped.
+# - Inside a Scratchpad Deck (special:deck_*):
+#   - Super+Up / Super+Down slides vertically between Scratchpad Decks.
+#   - Super+Left / Super+Right navigates horizontally between side-by-side windows within the current deck.
+# - Across normal main workspaces:
+#   - Super+Up/Down/Left/Right focuses directionally across tiled windows.
 
 set -euo pipefail
 
@@ -12,63 +13,38 @@ dir=${1:-left}
 active=$(hyprctl activewindow -j 2>/dev/null || true)
 [[ -n "$active" ]] || exit 0
 
-addr=$(echo "$active" | jq -r '.address // empty')
-grouped_json=$(echo "$active" | jq -c '.grouped // []')
-grouped_len=$(echo "$grouped_json" | jq 'length')
+ws=$(echo "$active" | jq -r '.workspace.name // empty')
 
+if [[ "$ws" =~ ^special:(deck_[0-9]+|center)$ ]]; then
+  # Inside a Scratchpad Deck:
+  case "$dir" in
+    up|u)
+      # Switch to previous deck
+      scratchpad-deck prev
+      exit 0
+      ;;
+    down|d)
+      # Switch to next deck
+      scratchpad-deck next
+      exit 0
+      ;;
+    left|l)
+      # Focus left window in this deck
+      hyprctl dispatch "hl.dsp.focus({ direction = \"l\" })" > /dev/null
+      exit 0
+      ;;
+    right|r)
+      # Focus right window in this deck
+      hyprctl dispatch "hl.dsp.focus({ direction = \"r\" })" > /dev/null
+      exit 0
+      ;;
+  esac
+fi
+
+# Main Workspace: Standard directional focus
 case "$dir" in
-  up|u)
-    if [[ "$grouped_len" -gt 1 ]]; then
-      curr_idx=$(echo "$grouped_json" | jq "index(\"$addr\") // 0")
-      if [[ "$curr_idx" -gt 0 ]]; then
-        # Step up to previous card in the vertical stack
-        hyprctl dispatch "hl.dsp.group.prev()" > /dev/null
-        exit 0
-      fi
-    fi
-    # At top card (or not multi-window grouped) -> attempt directional focus up
-    hyprctl dispatch "hl.dsp.focus({ direction = \"u\" })" > /dev/null
-
-    # If focus didn't move and we are in a multi-window stack, wrap around to bottom
-    if [[ "$grouped_len" -gt 1 ]]; then
-      new_active=$(hyprctl activewindow -j 2>/dev/null || true)
-      new_addr=$(echo "$new_active" | jq -r '.address // empty')
-      if [[ "$new_addr" == "$addr" ]]; then
-        hyprctl dispatch "hl.dsp.group.prev()" > /dev/null
-      fi
-    fi
-    ;;
-
-  down|d)
-    if [[ "$grouped_len" -gt 1 ]]; then
-      curr_idx=$(echo "$grouped_json" | jq "index(\"$addr\") // 0")
-      max_idx=$(( grouped_len - 1 ))
-      if [[ "$curr_idx" -lt "$max_idx" ]]; then
-        # Step down to next card in the vertical stack
-        hyprctl dispatch "hl.dsp.group.next()" > /dev/null
-        exit 0
-      fi
-    fi
-    # At bottom card (or not multi-window grouped) -> attempt directional focus down
-    hyprctl dispatch "hl.dsp.focus({ direction = \"d\" })" > /dev/null
-
-    # If focus didn't move and we are in a multi-window stack, wrap around to top
-    if [[ "$grouped_len" -gt 1 ]]; then
-      new_active=$(hyprctl activewindow -j 2>/dev/null || true)
-      new_addr=$(echo "$new_active" | jq -r '.address // empty')
-      if [[ "$new_addr" == "$addr" ]]; then
-        hyprctl dispatch "hl.dsp.group.next()" > /dev/null
-      fi
-    fi
-    ;;
-
-  left|l)
-    # Move horizontally to column on the left
-    hyprctl dispatch "hl.dsp.focus({ direction = \"l\" })" > /dev/null
-    ;;
-
-  right|r)
-    # Move horizontally to column on the right
-    hyprctl dispatch "hl.dsp.focus({ direction = \"r\" })" > /dev/null
-    ;;
+  up|u)    hyprctl dispatch "hl.dsp.focus({ direction = \"u\" })" > /dev/null ;;
+  down|d)  hyprctl dispatch "hl.dsp.focus({ direction = \"d\" })" > /dev/null ;;
+  left|l)  hyprctl dispatch "hl.dsp.focus({ direction = \"l\" })" > /dev/null ;;
+  right|r) hyprctl dispatch "hl.dsp.focus({ direction = \"r\" })" > /dev/null ;;
 esac
