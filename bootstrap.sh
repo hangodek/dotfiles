@@ -107,6 +107,11 @@ EOF
   sudo sysctl -p /etc/sysctl.d/99-bbr.conf >/dev/null 2>&1 || true
 fi
 
+echo "--> Applying smooth Spotlight zoom & fade animation to Omarchy Menu..."
+if [[ -f "$DOTFILES/scripts/patch-smooth-menu.sh" ]]; then
+  sudo bash "$DOTFILES/scripts/patch-smooth-menu.sh" >/dev/null 2>&1 || true
+fi
+
 if [[ "$INSTALL_CACHYOS" == "true" ]]; then
   echo ""
   echo "==> Triggering CachyOS Kernel & Performance Suite installation..."
