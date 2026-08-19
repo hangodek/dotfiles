@@ -1,5 +1,5 @@
 #!/bin/bash
-# Install and configure CachyOS x86-64-v3 optimized repository, performance kernel, and settings suite.
+# Robust CachyOS x86-64-v3 repository and kernel installer for Arch Linux / Omarchy.
 # Usage: sudo bash ~/dotfiles/scripts/setup-cachyos.sh
 
 set -euo pipefail
@@ -16,15 +16,47 @@ else
   echo "    CPU is standard x86-64. Proceeding with standard CachyOS repository."
 fi
 
-echo "==> [2/5] Setting up CachyOS repository and GPG keys..."
+echo "==> [2/5] Fetching CachyOS keyring & mirrorlists directly via HTTPS..."
 TMP_DIR=$(mktemp -d)
 trap 'rm -rf "$TMP_DIR"' EXIT
 
 cd "$TMP_DIR"
-curl -sL https://mirror.cachyos.org/cachyos-repo.tar.xz -o cachyos-repo.tar.xz
-tar xf cachyos-repo.tar.xz
-cd cachyos-repo
-./cachyos-repo.sh --install
+MIRROR="https://mirror.cachyos.org/repo/x86_64/cachyos"
+
+echo "    Downloading cachyos-keyring and mirrorlists..."
+curl -sSL "$MIRROR/cachyos-keyring-20240331-1-any.pkg.tar.zst" -o cachyos-keyring.pkg.tar.zst
+curl -sSL "$MIRROR/cachyos-mirrorlist-27-1-any.pkg.tar.zst" -o cachyos-mirrorlist.pkg.tar.zst
+curl -sSL "$MIRROR/cachyos-v3-mirrorlist-27-1-any.pkg.tar.zst" -o cachyos-v3-mirrorlist.pkg.tar.zst
+
+echo "    Installing keyring and mirrorlists into pacman..."
+pacman -U --noconfirm --needed ./cachyos-keyring.pkg.tar.zst ./cachyos-mirrorlist.pkg.tar.zst ./cachyos-v3-mirrorlist.pkg.tar.zst
+
+echo "    Populating CachyOS trusted GPG keys..."
+pacman-key --populate cachyos || true
+
+echo "    Configuring /etc/pacman.conf with CachyOS v3 repositories..."
+if ! grep -q "\[cachyos-v3\]" /etc/pacman.conf; then
+  # Backup existing config
+  cp /etc/pacman.conf /etc/pacman.conf.bak.$(date +%s)
+  
+  # Insert CachyOS repositories before [core]
+  sed -i '/^\[core\]/i \
+[cachyos-v3]\
+Include = /etc/pacman.d/cachyos-v3-mirrorlist\
+\
+[cachyos-core-v3]\
+Include = /etc/pacman.d/cachyos-v3-mirrorlist\
+\
+[cachyos-extra-v3]\
+Include = /etc/pacman.d/cachyos-v3-mirrorlist\
+\
+[cachyos]\
+Include = /etc/pacman.d/cachyos-mirrorlist\
+' /etc/pacman.conf
+fi
+
+echo "    Syncing pacman databases..."
+pacman -Sy
 
 echo "==> [3/5] Installing CachyOS kernel, headers, and performance suite..."
 pacman -S --needed --noconfirm \
