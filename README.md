@@ -44,6 +44,8 @@ Personal configuration and customizations for [Omarchy Linux](https://omarchy.or
 │   ├── git/
 │   │   └── config               # Git settings
 │   └── starship.toml            # Starship prompt configuration
+├── scripts/
+│   └── setup-cachyos.sh         # Automated CachyOS x86-64-v3 kernel & settings installer
 └── local/
     └── bin/
         ├── scratchpad-deck      # Independent multi-deck scratchpad manager
@@ -90,5 +92,10 @@ When reinstalling Omarchy or setting up a new machine:
 
 ```bash
 git clone git@github.com:hangodek/dotfiles.git ~/dotfiles
+
+# Standard restore (Configs, scratchpads & scripts)
 bash ~/dotfiles/bootstrap.sh
+
+# Complete restore + CachyOS x86-64-v3 Kernel & Performance Suite
+bash ~/dotfiles/bootstrap.sh --cachyos
 ```

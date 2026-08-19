@@ -1,10 +1,27 @@
 #!/bin/bash
 # Restore personal Omarchy dotfiles after a fresh install or update.
-# Usage: bash ~/dotfiles/bootstrap.sh
+# Usage: bash ~/dotfiles/bootstrap.sh [--cachyos]
 
 set -euo pipefail
 
 DOTFILES="$(cd "$(dirname "$0")" && pwd)"
+INSTALL_CACHYOS=false
+
+for arg in "$@"; do
+  case "$arg" in
+    --cachyos)
+      INSTALL_CACHYOS=true
+      ;;
+    --help|-h)
+      echo "Usage: bash ~/dotfiles/bootstrap.sh [OPTIONS]"
+      echo ""
+      echo "Options:"
+      echo "  --cachyos    Install CachyOS x86-64-v3 kernel and optimization suite"
+      echo "  --help       Show this help message"
+      exit 0
+      ;;
+  esac
+done
 
 echo "==> Restoring Omarchy personal dotfiles..."
 
@@ -63,6 +80,12 @@ if command -v hyprctl >/dev/null 2>&1; then
   if hyprctl configerrors 2>&1 | grep -q "ok"; then
     echo "    Hyprland config validated successfully."
   fi
+fi
+
+if [[ "$INSTALL_CACHYOS" == "true" ]]; then
+  echo ""
+  echo "==> Triggering CachyOS Kernel & Performance Suite installation..."
+  sudo bash "$DOTFILES/scripts/setup-cachyos.sh"
 fi
 
 echo "==> All personal configs and scripts successfully restored!"
