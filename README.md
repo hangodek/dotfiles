@@ -59,6 +59,7 @@ Personal configuration and customizations for [Omarchy Linux](https://omarchy.or
 | `ALT + F` | **Toggle active scratchpad deck** (shows/hides, or opens App Menu if empty) | Anywhere |
 | `SUPER + N` | **Create new scratchpad deck** (prompts App Menu to create next deck) | Anywhere |
 | `ALT + SHIFT + F` | **Create new scratchpad deck** (alternative shortcut) | Anywhere |
+| `SUPER + W` | **Close window** (transitions to previous deck if last window in deck closes) | Anywhere |
 | `SUPER + O` | **Move window to/from scratchpad deck** (joins deck or ejects to main) | Main / Scratchpad |
 | `SUPER + UP` | **Switch to previous scratchpad deck** / Focus window above | Scratchpad / Main |
 | `SUPER + DOWN` | **Switch to next scratchpad deck** / Focus window below | Scratchpad / Main |

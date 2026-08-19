@@ -170,6 +170,50 @@ cmd_prev() {
   hyprctl dispatch "hl.dsp.workspace.toggle_special(\"$prev_deck\")" > /dev/null
 }
 
+cmd_close() {
+  local active
+  active=$(hyprctl activewindow -j 2>/dev/null || true)
+  [[ -n "$active" ]] || exit 0
+
+  local active_ws
+  active_ws=$(echo "$active" | jq -r '.workspace.name // empty')
+  local active_addr
+  active_addr=$(echo "$active" | jq -r '.address // empty')
+
+  if [[ "$active_ws" =~ ^special:(deck_[0-9]+|center)$ ]]; then
+    # In Scratchpad Deck:
+    local remaining_in_this_deck
+    remaining_in_this_deck=$(hyprctl clients -j 2>/dev/null \
+      | jq "[.[] | select(.workspace.name == \"$active_ws\")] | length" 2>/dev/null || echo 1)
+
+    if [[ "$remaining_in_this_deck" -eq 1 ]]; then
+      # This is the LAST window in this deck!
+      mapfile -t all_decks < <(get_active_decks)
+      local other_decks=()
+      for d in "${all_decks[@]}"; do
+        if [[ "$d" != "$active_ws" ]]; then
+          other_decks+=("${d#special:}")
+        fi
+      done
+
+      # Close active window first
+      hyprctl dispatch "hl.dsp.window.close({ window = \"address:$active_addr\" })" > /dev/null 2>&1 || true
+
+      if [[ ${#other_decks[@]} -gt 0 ]]; then
+        # Switch to previous/nearest remaining deck so overlay stays open
+        local target_deck="${other_decks[-1]}"
+        save_active_deck "$target_deck"
+        sleep 0.05
+        hyprctl dispatch "hl.dsp.workspace.toggle_special(\"$target_deck\")" > /dev/null 2>&1 || true
+      fi
+      exit 0
+    fi
+  fi
+
+  # Standard window close
+  hyprctl dispatch "hl.dsp.window.close({ window = \"address:$active_addr\" })" > /dev/null 2>&1 || true
+}
+
 cmd_eject() {
   local active
   active=$(hyprctl activewindow -j 2>/dev/null || true)
@@ -228,9 +272,10 @@ case "$action" in
   new)    cmd_new ;;
   next)   cmd_next ;;
   prev)   cmd_prev ;;
+  close)  cmd_close ;;
   eject)  cmd_eject ;;
   *)
-    echo "Usage: scratchpad-deck [toggle|new|next|prev|eject]" >&2
+    echo "Usage: scratchpad-deck [toggle|new|next|prev|close|eject]" >&2
     exit 1
     ;;
 esac

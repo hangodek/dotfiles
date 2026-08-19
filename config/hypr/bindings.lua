@@ -43,6 +43,10 @@ o.bind("ALT + F", "Toggle active scratchpad deck", "scratchpad-deck toggle")
 o.bind("ALT + SHIFT + F", "New scratchpad deck", "scratchpad-deck new")
 o.bind("SUPER + N", "New scratchpad deck", "scratchpad-deck new")
 
+-- Smart window close (switches to remaining scratchpad deck if last window in deck closes)
+hl.unbind("SUPER + W")
+o.bind("SUPER + W", "Close window", "scratchpad-deck close")
+
 -- Smart window navigation (Super+Up/Down slides between decks in scratchpad, Super+Left/Right navigates side-by-side tiles)
 hl.unbind("SUPER + LEFT")
 o.bind("SUPER + LEFT", "Focus left window", "nav-window left")
