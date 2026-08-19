@@ -1,0 +1,14 @@
+#!/bin/bash
+# Wrapper around omarchy-install-browser with LibreWolf support
+
+if [[ "${1:-}" == "librewolf" ]]; then
+  echo "Installing LibreWolf..."
+  omarchy-pkg-add librewolf || exit 1
+  mkdir -p ~/.config/environment.d
+  echo "MOZ_ENABLE_WAYLAND=1" > ~/.config/environment.d/omarchy-firefox-wayland.conf
+  echo ""
+  echo "LibreWolf browser installed. Make it the default via Setup > Defaults > Browser."
+  exit 0
+fi
+
+exec /usr/share/omarchy/bin/omarchy-install-browser "$@"

@@ -1,0 +1,27 @@
+#!/bin/bash
+# Wrapper around omarchy-default-browser with LibreWolf support
+
+if (($# == 0)); then
+  case "$(env -u BROWSER xdg-settings get default-web-browser)" in
+  librewolf.desktop) echo "librewolf" ;;
+  *) /usr/share/omarchy/bin/omarchy-default-browser "$@" ;;
+  esac
+  exit 0
+fi
+
+if [[ "$1" == "librewolf" ]]; then
+  desktop_id="librewolf.desktop"
+  name="LibreWolf"
+  glyph="󰈹"
+  env -u BROWSER xdg-settings set default-web-browser "$desktop_id" || exit 1
+  xdg-mime default "$desktop_id" x-scheme-handler/http
+  xdg-mime default "$desktop_id" x-scheme-handler/https
+  xdg-mime default "$desktop_id" text/html
+  xdg-mime default "$desktop_id" text/xml
+  xdg-mime default "$desktop_id" application/xhtml+xml
+  xdg-mime default "$desktop_id" x-scheme-handler/about
+  omarchy-notification-send -g "$glyph" "$name is now the default browser"
+  exit 0
+fi
+
+exec /usr/share/omarchy/bin/omarchy-default-browser "$@"

@@ -88,6 +88,13 @@ if command -v pacman >/dev/null 2>&1; then
   sudo systemctl enable --now rtkit-daemon.service >/dev/null 2>&1 || true
 fi
 
+echo "--> Configuring default web browser (LibreWolf)..."
+if command -v librewolf >/dev/null 2>&1; then
+  env -u BROWSER xdg-settings set default-web-browser librewolf.desktop >/dev/null 2>&1 || true
+  xdg-mime default librewolf.desktop x-scheme-handler/http >/dev/null 2>&1 || true
+  xdg-mime default librewolf.desktop x-scheme-handler/https >/dev/null 2>&1 || true
+fi
+
 if [[ "$INSTALL_CACHYOS" == "true" ]]; then
   echo ""
   echo "==> Triggering CachyOS Kernel & Performance Suite installation..."
