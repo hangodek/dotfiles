@@ -34,11 +34,15 @@ pacman -U --noconfirm --needed ./cachyos-keyring.pkg.tar.zst ./cachyos-mirrorlis
 echo "    Populating CachyOS trusted GPG keys..."
 pacman-key --populate cachyos || true
 
+echo "    Configuring /etc/pacman.conf for x86_64_v3 architecture..."
+if grep -q "^Architecture = auto$" /etc/pacman.conf; then
+  sed -i 's/^Architecture = auto$/Architecture = auto x86_64_v3/' /etc/pacman.conf
+elif grep -q "^Architecture = x86_64$" /etc/pacman.conf; then
+  sed -i 's/^Architecture = x86_64$/Architecture = x86_64 x86_64_v3/' /etc/pacman.conf
+fi
+
 echo "    Configuring /etc/pacman.conf with CachyOS v3 repositories..."
 if ! grep -q "\[cachyos-v3\]" /etc/pacman.conf; then
-  # Backup existing config
-  cp /etc/pacman.conf /etc/pacman.conf.bak.$(date +%s)
-  
   # Insert CachyOS repositories before [core]
   sed -i '/^\[core\]/i \
 [cachyos-v3]\
