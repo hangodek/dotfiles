@@ -2,6 +2,8 @@
 
 Personal configuration and customizations for [Omarchy Linux](https://omarchy.org/) (Arch Linux + Hyprland).
 
+> **Tested Hardware**: Fully tested and optimized on **Lenovo ThinkPad X395** (AMD Ryzen 5 PRO 3500U).
+
 ---
 
 ## Features & Highlights
