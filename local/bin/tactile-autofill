@@ -1,11 +1,20 @@
 #!/usr/bin/env python3
 """
-Tactile Auto-Fill Daemon for Hyprland & Omarchy
-Monitors Hyprland window creation events via socket2.
-When a new window opens on a workspace where existing windows occupy
-a Tactile sub-region (e.g. Left 2/3), it automatically snaps the new window
-to fill the unoccupied grid area (e.g. Right 1/3).
-Supports dynamic grid rows, columns, and asymmetric column weights.
+Tactile Universal Auto-Fill & Smart Auto-Collapse Engine
+Monitors Hyprland window creation and destruction events via socket2.
+
+Features:
+1. Standard Tiling Mode:
+   If windows on the workspace are standard TILED (floating: false), this daemon
+   does NOTHING, letting Hyprland do its native dwindle tiling.
+2. Tactile Floating Mode:
+   - When a new window opens:
+     a) If there are unoccupied grid cells -> snaps new window into the unoccupied gap.
+     b) If grid is already full -> splits the active slot following Dwindle sequence (Right -> Bottom -> Right -> Bottom).
+   - When a window closes (Universal N-Window Sibling Collapse):
+     a) Automatically detects the empty void left by the closed window.
+     b) Expands the adjacent sibling window (Horizontal or Vertical) to fill the empty space.
+     c) If only 1 window remains -> expands to 100% Full Screen canvas.
 """
 
 import sys
@@ -14,6 +23,9 @@ import json
 import socket
 import subprocess
 import time
+
+# Cache of last known window geometries: { addr.lower(): (x, y, w, h, ws_id) }
+last_known_geometry = {}
 
 
 def get_hypr_socket2():
@@ -52,6 +64,15 @@ def get_active_clients_and_monitor():
         clients = json.loads(subprocess.check_output(['hyprctl', 'clients', '-j'], text=True))
         monitors = json.loads(subprocess.check_output(['hyprctl', 'monitors', '-j'], text=True))
         focused_mon = next((m for m in monitors if m.get('focused')), monitors[0] if monitors else None)
+        
+        for c in clients:
+            addr = c.get('address', '').lower()
+            if addr and c.get('floating') is True:
+                at = c.get('at', [0, 0])
+                size = c.get('size', [0, 0])
+                ws_id = c.get('workspace', {}).get('id')
+                last_known_geometry[addr] = (at[0], at[1], size[0], size[1], ws_id)
+
         return clients, focused_mon
     except Exception:
         return [], None
@@ -85,7 +106,7 @@ def compute_dimension_coords(canvas_start, canvas_total, inner, weights, idx1, i
 
 
 def map_window_to_cells(win, mon, cfg):
-    """Determine which grid cells a window currently occupies."""
+    """Determine which grid cells a floating window currently occupies."""
     if not win or not mon:
         return []
 
@@ -168,52 +189,36 @@ def autofill_new_window(new_addr, workspace_id_or_name):
     if not existing_clients:
         return
 
+    # Guard: ONLY proceed if workspace has floating Tactile windows
+    floating_clients = [c for c in existing_clients if c.get('floating') is True]
+    if not floating_clients:
+        return
+
     grid = cfg.get('grid', {})
     cols = grid.get('cols', 3)
     rows = grid.get('rows', 2)
     total_cells = rows * cols
 
     occupied_cells = set()
-    for c in existing_clients:
+    for c in floating_clients:
         cells = map_window_to_cells(c, mon, cfg)
         for cell in cells:
             occupied_cells.add(cell)
 
-    if not occupied_cells or len(occupied_cells) >= total_cells:
-        return
+    gaps = cfg.get('gaps', {})
+    inner = gaps.get('inner', 8)
+    outer = gaps.get('outer', 12)
+    top_bar = gaps.get('top_bar', 35)
 
-    unoccupied = []
-    for r in range(rows):
-        for c in range(cols):
-            if (r, c) not in occupied_cells:
-                unoccupied.append((r, c))
-
-    if not unoccupied:
-        return
-
-    min_r = min(r for r, c in unoccupied)
-    max_r = max(r for r, c in unoccupied)
-    min_c = min(c for r, c in unoccupied)
-    max_c = max(c for r, c in unoccupied)
-
-    mon_w = mon.get('width', 1920)
-    mon_h = mon.get('height', 1080)
-    scale = mon.get('scale', 1.0)
+    mon_w = int(mon.get('width', 1920) / mon.get('scale', 1.0))
+    mon_h = int(mon.get('height', 1080) / mon.get('scale', 1.0))
     mon_x = mon.get('x', 0)
     mon_y = mon.get('y', 0)
 
-    scaled_w = int(mon_w / scale)
-    scaled_h = int(mon_h / scale)
-
-    gaps = cfg.get('gaps', {})
-    outer = gaps.get('outer', 12)
-    inner = gaps.get('inner', 8)
-    top_bar = gaps.get('top_bar', 35)
-
     canvas_x = mon_x + outer
     canvas_y = mon_y + top_bar + outer
-    canvas_w = scaled_w - (2 * outer)
-    canvas_h = scaled_h - top_bar - (2 * outer)
+    canvas_w = mon_w - (2 * outer)
+    canvas_h = mon_h - top_bar - (2 * outer)
 
     col_weights = cfg.get('col_weights', [1.0] * cols)
     while len(col_weights) < cols:
@@ -225,17 +230,208 @@ def autofill_new_window(new_addr, workspace_id_or_name):
         row_weights.append(1.0)
     row_weights = row_weights[:rows]
 
-    target_x, target_w, _, _ = compute_dimension_coords(canvas_x, canvas_w, inner, col_weights, min_c, max_c)
-    target_y, target_h, _, _ = compute_dimension_coords(canvas_y, canvas_h, inner, row_weights, min_r, max_r)
+    # -------------------------------------------------------------
+    # CASE 1: Grid has unoccupied gaps -> Fill the gap
+    # -------------------------------------------------------------
+    if len(occupied_cells) < total_cells:
+        unoccupied = []
+        for r in range(rows):
+            for c in range(cols):
+                if (r, c) not in occupied_cells:
+                    unoccupied.append((r, c))
 
-    script = f'''
+        if unoccupied:
+            min_r = min(r for r, c in unoccupied)
+            max_r = max(r for r, c in unoccupied)
+            min_c = min(c for r, c in unoccupied)
+            max_c = max(c for r, c in unoccupied)
+
+            target_x, target_w, _, _ = compute_dimension_coords(canvas_x, canvas_w, inner, col_weights, min_c, max_c)
+            target_y, target_h, _, _ = compute_dimension_coords(canvas_y, canvas_h, inner, row_weights, min_r, max_r)
+
+            script = f'''
 hyprctl dispatch "hl.dsp.focus({{ window = 'address:{new_addr}' }})"
 hyprctl dispatch "hl.dsp.window.float({{ action = 'on' }})"
 hyprctl dispatch "hl.dsp.window.resize({{ x = {target_w}, y = {target_h} }})"
 hyprctl dispatch "hl.dsp.window.move({{ x = {target_x}, y = {target_y} }})"
 '''
+            subprocess.run(['bash', '-c', script], check=False)
+            return
 
-    subprocess.run(['bash', '-c', script], check=False)
+    # -------------------------------------------------------------
+    # CASE 2: Grid is ALREADY FULL -> Natural Dwindle Split
+    # -------------------------------------------------------------
+    target_win = max(floating_clients, key=lambda c: (c.get('size', [0, 0])[0] * c.get('size', [0, 0])[1]))
+    t_addr = target_win.get('address')
+    tx, ty = target_win.get('at', [0, 0])
+    tw, th = target_win.get('size', [0, 0])
+
+    if th >= 800:
+        # Full height window: Split BOTTOM
+        h1 = (th - inner) // 2
+        h2 = th - inner - h1
+        y2 = ty + h1 + inner
+
+        script = f'''
+hyprctl dispatch "hl.dsp.focus({{ window = 'address:{t_addr}' }})"
+hyprctl dispatch "hl.dsp.window.float({{ action = 'on' }})"
+hyprctl dispatch "hl.dsp.window.resize({{ x = {tw}, y = {h1} }})"
+hyprctl dispatch "hl.dsp.window.move({{ x = {tx}, y = {ty} }})"
+hyprctl dispatch "hl.dsp.focus({{ window = 'address:{new_addr}' }})"
+hyprctl dispatch "hl.dsp.window.float({{ action = 'on' }})"
+hyprctl dispatch "hl.dsp.window.resize({{ x = {tw}, y = {h2} }})"
+hyprctl dispatch "hl.dsp.window.move({{ x = {tx}, y = {y2} }})"
+'''
+        subprocess.run(['bash', '-c', script], check=False)
+
+    else:
+        # Half height window: Split RIGHT
+        w1 = (tw - inner) // 2
+        w2 = tw - inner - w1
+        x2 = tx + w1 + inner
+
+        script = f'''
+hyprctl dispatch "hl.dsp.focus({{ window = 'address:{t_addr}' }})"
+hyprctl dispatch "hl.dsp.window.float({{ action = 'on' }})"
+hyprctl dispatch "hl.dsp.window.resize({{ x = {w1}, y = {th} }})"
+hyprctl dispatch "hl.dsp.window.move({{ x = {tx}, y = {ty} }})"
+hyprctl dispatch "hl.dsp.focus({{ window = 'address:{new_addr}' }})"
+hyprctl dispatch "hl.dsp.window.float({{ action = 'on' }})"
+hyprctl dispatch "hl.dsp.window.resize({{ x = {w2}, y = {th} }})"
+hyprctl dispatch "hl.dsp.window.move({{ x = {x2}, y = {ty} }})"
+'''
+        subprocess.run(['bash', '-c', script], check=False)
+
+
+def handle_window_closed(closed_addr):
+    """Universal sibling expansion on window close for ANY number of windows."""
+    cfg = load_config()
+    clients, mon = get_active_clients_and_monitor()
+    if not mon:
+        return
+
+    active_mon = next((m for m in [mon] if m.get('focused')), mon)
+    active_ws_id = active_mon.get('activeWorkspace', {}).get('id')
+    active_ws_name = str(active_mon.get('activeWorkspace', {}).get('name', ''))
+
+    # Remaining floating windows on active workspace
+    rem_floating = [c for c in clients if (c.get('workspace', {}).get('id') == active_ws_id or str(c.get('workspace', {}).get('name')) == active_ws_name) and c.get('floating') is True and not c.get('hidden') and c.get('mapped') and c.get('address', '').lower() != closed_addr.lower()]
+
+    if not rem_floating:
+        return
+
+    gaps = cfg.get('gaps', {})
+    inner = gaps.get('inner', 8)
+    outer = gaps.get('outer', 12)
+    top_bar = gaps.get('top_bar', 35)
+
+    mon_w = int(mon.get('width', 1920) / mon.get('scale', 1.0))
+    mon_h = int(mon.get('height', 1080) / mon.get('scale', 1.0))
+    mon_x = mon.get('x', 0)
+    mon_y = mon.get('y', 0)
+
+    canvas_x = mon_x + outer
+    canvas_y = mon_y + top_bar + outer
+    canvas_w = mon_w - (2 * outer)
+    canvas_h = mon_h - top_bar - (2 * outer)
+
+    # 1. If only 1 window is left -> expand to 100% full screen canvas!
+    if len(rem_floating) == 1:
+        sole_addr = rem_floating[0].get('address')
+        script = f'''
+hyprctl dispatch "hl.dsp.focus({{ window = 'address:{sole_addr}' }})"
+hyprctl dispatch "hl.dsp.window.resize({{ x = {canvas_w}, y = {canvas_h} }})"
+hyprctl dispatch "hl.dsp.window.move({{ x = {canvas_x}, y = {canvas_y} }})"
+'''
+        subprocess.run(['bash', '-c', script], check=False)
+        return
+
+    # 2. Universal Sibling Match using cached closed geometry
+    cached_geo = last_known_geometry.get(closed_addr.lower())
+    if cached_geo:
+        xc, yc, wc, hc, _ = cached_geo
+
+        # Try Horizontal Left Neighbor (Left expands Right to cover closed window)
+        for win in rem_floating:
+            wx, wy = win.get('at', [0, 0])
+            ww, wh = win.get('size', [0, 0])
+            target_addr = win.get('address')
+            if abs((wx + ww + inner) - xc) <= 8 and abs(wy - yc) <= 15 and abs(wh - hc) <= 15:
+                new_w = ww + inner + wc
+                script = f'''
+hyprctl dispatch "hl.dsp.focus({{ window = 'address:{target_addr}' }})"
+hyprctl dispatch "hl.dsp.window.resize({{ x = {new_w}, y = {wh} }})"
+hyprctl dispatch "hl.dsp.window.move({{ x = {wx}, y = {wy} }})"
+'''
+                subprocess.run(['bash', '-c', script], check=False)
+                return
+
+        # Try Horizontal Right Neighbor (Right expands Left to cover closed window)
+        for win in rem_floating:
+            wx, wy = win.get('at', [0, 0])
+            ww, wh = win.get('size', [0, 0])
+            target_addr = win.get('address')
+            if abs((xc + wc + inner) - wx) <= 8 and abs(wy - yc) <= 15 and abs(wh - hc) <= 15:
+                new_w = ww + inner + wc
+                script = f'''
+hyprctl dispatch "hl.dsp.focus({{ window = 'address:{target_addr}' }})"
+hyprctl dispatch "hl.dsp.window.resize({{ x = {new_w}, y = {wh} }})"
+hyprctl dispatch "hl.dsp.window.move({{ x = {xc}, y = {wy} }})"
+'''
+                subprocess.run(['bash', '-c', script], check=False)
+                return
+
+        # Try Vertical Top Neighbor (Top expands Down to cover closed window)
+        for win in rem_floating:
+            wx, wy = win.get('at', [0, 0])
+            ww, wh = win.get('size', [0, 0])
+            target_addr = win.get('address')
+            if abs((wy + wh + inner) - yc) <= 8 and abs(wx - xc) <= 15 and abs(ww - wc) <= 15:
+                new_h = wh + inner + hc
+                script = f'''
+hyprctl dispatch "hl.dsp.focus({{ window = 'address:{target_addr}' }})"
+hyprctl dispatch "hl.dsp.window.resize({{ x = {ww}, y = {new_h} }})"
+hyprctl dispatch "hl.dsp.window.move({{ x = {wx}, y = {wy} }})"
+'''
+                subprocess.run(['bash', '-c', script], check=False)
+                return
+
+        # Try Vertical Bottom Neighbor (Bottom expands Up to cover closed window)
+        for win in rem_floating:
+            wx, wy = win.get('at', [0, 0])
+            ww, wh = win.get('size', [0, 0])
+            target_addr = win.get('address')
+            if abs((yc + hc + inner) - wy) <= 8 and abs(wx - xc) <= 15 and abs(ww - wc) <= 15:
+                new_h = wh + inner + hc
+                script = f'''
+hyprctl dispatch "hl.dsp.focus({{ window = 'address:{target_addr}' }})"
+hyprctl dispatch "hl.dsp.window.resize({{ x = {ww}, y = {new_h} }})"
+hyprctl dispatch "hl.dsp.window.move({{ x = {wx}, y = {yc} }})"
+'''
+                subprocess.run(['bash', '-c', script], check=False)
+                return
+
+    # 3. Fallback: If 2 windows remain and no direct sibling matched, rebalance across active weights
+    if len(rem_floating) == 2:
+        grid = cfg.get('grid', {})
+        cols = grid.get('cols', 3)
+        col_weights = cfg.get('col_weights', [1.0] * cols)
+        sorted_wins = sorted(rem_floating, key=lambda c: c.get('at', [0, 0])[0])
+        w1_addr = sorted_wins[0].get('address')
+        w2_addr = sorted_wins[1].get('address')
+
+        w1_x, w1_w, _, _ = compute_dimension_coords(canvas_x, canvas_w, inner, col_weights, 0, 0)
+        w2_x, w2_w, _, _ = compute_dimension_coords(canvas_x, canvas_w, inner, col_weights, 1, cols - 1)
+
+        script = f'''
+hyprctl dispatch "hl.dsp.focus({{ window = 'address:{w1_addr}' }})"
+hyprctl dispatch "hl.dsp.window.resize({{ x = {w1_w}, y = {canvas_h} }})"
+hyprctl dispatch "hl.dsp.window.move({{ x = {w1_x}, y = {canvas_y} }})"
+hyprctl dispatch "hl.dsp.focus({{ window = 'address:{w2_addr}' }})"
+hyprctl dispatch "hl.dsp.window.resize({{ x = {w2_w}, y = {canvas_h} }})"
+hyprctl dispatch "hl.dsp.window.move({{ x = {w2_x}, y = {canvas_y} }})"
+'''
+        subprocess.run(['bash', '-c', script], check=False)
 
 
 def run_daemon():
@@ -250,6 +446,8 @@ def run_daemon():
     except Exception as e:
         print(f"Failed to connect to socket2: {e}", file=sys.stderr)
         sys.exit(1)
+
+    get_active_clients_and_monitor()
 
     buffer = ""
     while True:
@@ -268,6 +466,13 @@ def run_daemon():
                         ws = parts[1]
                         time.sleep(0.06)
                         autofill_new_window(addr, ws)
+                        get_active_clients_and_monitor()
+                elif line.startswith("closewindow>>"):
+                    payload = line[len("closewindow>>"):]
+                    closed_addr = "0x" + payload.strip().lstrip("0x")
+                    time.sleep(0.06)
+                    handle_window_closed(closed_addr)
+                    get_active_clients_and_monitor()
         except Exception:
             time.sleep(0.5)
 
