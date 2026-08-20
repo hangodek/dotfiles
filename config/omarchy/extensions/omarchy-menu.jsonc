@@ -10,5 +10,134 @@
     "label": "Antigravity CLI",
     "when": "! omarchy-cmd-present agy",
     "action": "omarchy-launch-floating-terminal-with-presentation 'curl -fsSL https://antigravity.google.com/install.sh | bash'"
+  },
+  "setup.tactile": {
+    "icon": "󰕰",
+    "label": "Tactile Grid",
+    "aliases": ["tactile", "grid", "layout"]
+  },
+  "setup.tactile.preset": {
+    "icon": "󰕰",
+    "label": "Grid Presets",
+    "title": "Tactile Grid Presets"
+  },
+  "setup.tactile.preset.2x3": {
+    "icon": "󰕰",
+    "label": "2 × 3 Standard (QWE / ASD)",
+    "checked": "[[ \"$(omarchy-tactile-setup active-preset)\" == \"2x3\" ]]",
+    "action": "omarchy-tactile-setup preset 2x3"
+  },
+  "setup.tactile.preset.3x3": {
+    "icon": "󰕰",
+    "label": "3 × 3 Precision (QWE / ASD / ZXC)",
+    "checked": "[[ \"$(omarchy-tactile-setup active-preset)\" == \"3x3\" ]]",
+    "action": "omarchy-tactile-setup preset 3x3"
+  },
+  "setup.tactile.preset.2x2": {
+    "icon": "󰕰",
+    "label": "2 × 2 Quadrants (QW / AS)",
+    "checked": "[[ \"$(omarchy-tactile-setup active-preset)\" == \"2x2\" ]]",
+    "action": "omarchy-tactile-setup preset 2x2"
+  },
+  "setup.tactile.preset.1x3": {
+    "icon": "󰕰",
+    "label": "1 × 3 Triple Columns (Q W E)",
+    "checked": "[[ \"$(omarchy-tactile-setup active-preset)\" == \"1x3\" ]]",
+    "action": "omarchy-tactile-setup preset 1x3"
+  },
+  "setup.tactile.preset.2x4": {
+    "icon": "󰕰",
+    "label": "2 × 4 Ultrawide (QWER / ASDF)",
+    "checked": "[[ \"$(omarchy-tactile-setup active-preset)\" == \"2x4\" ]]",
+    "action": "omarchy-tactile-setup preset 2x4"
+  },
+  "setup.tactile.weights": {
+    "icon": "󰹑",
+    "label": "Column Proportions",
+    "title": "Expand / De-expand Columns"
+  },
+  "setup.tactile.weights.equal": {
+    "icon": "󰹑",
+    "label": "Equal Width (1 : 1 : 1)",
+    "checked": "[[ \"$(omarchy-tactile-setup active-weights)\" == \"1,1,1\" || \"$(omarchy-tactile-setup active-weights)\" == \"1,1\" ]]",
+    "action": "omarchy-tactile-setup weights 1,1,1"
+  },
+  "setup.tactile.weights.master_left": {
+    "icon": "󰹑",
+    "label": "Master Left (2 : 1 : 1 — 50% / 25% / 25%)",
+    "checked": "[[ \"$(omarchy-tactile-setup active-weights)\" == \"2,1,1\" ]]",
+    "action": "omarchy-tactile-setup weights 2,1,1"
+  },
+  "setup.tactile.weights.center_stage": {
+    "icon": "󰹑",
+    "label": "Center Stage (1 : 2 : 1 — 25% / 50% / 25%)",
+    "checked": "[[ \"$(omarchy-tactile-setup active-weights)\" == \"1,2,1\" ]]",
+    "action": "omarchy-tactile-setup weights 1,2,1"
+  },
+  "setup.tactile.weights.master_right": {
+    "icon": "󰹑",
+    "label": "Master Right (1 : 1 : 2 — 25% / 25% / 50%)",
+    "checked": "[[ \"$(omarchy-tactile-setup active-weights)\" == \"1,1,2\" ]]",
+    "action": "omarchy-tactile-setup weights 1,1,2"
+  },
+  "setup.tactile.dimensions": {
+    "icon": "󰛲",
+    "label": "Rows & Columns Count",
+    "title": "Adjust Grid Dimensions"
+  },
+  "setup.tactile.dimensions.add_row": {
+    "icon": "",
+    "label": "Add Row (+1)",
+    "action": "omarchy-tactile-setup add-row"
+  },
+  "setup.tactile.dimensions.remove_row": {
+    "icon": "",
+    "label": "Remove Row (-1)",
+    "action": "omarchy-tactile-setup remove-row"
+  },
+  "setup.tactile.dimensions.add_col": {
+    "icon": "",
+    "label": "Add Column (+1)",
+    "action": "omarchy-tactile-setup add-col"
+  },
+  "setup.tactile.dimensions.remove_col": {
+    "icon": "",
+    "label": "Remove Column (-1)",
+    "action": "omarchy-tactile-setup remove-col"
+  },
+  "setup.tactile.gaps": {
+    "icon": "󰹍",
+    "label": "Gaps & Spacing",
+    "title": "Gaps & Spacing"
+  },
+  "setup.tactile.gaps.normal": {
+    "icon": "󰹍",
+    "label": "Standard (Outer: 12px, Inner: 8px)",
+    "action": "omarchy-tactile-setup gaps 12 8"
+  },
+  "setup.tactile.gaps.compact": {
+    "icon": "󰹍",
+    "label": "Compact (Outer: 6px, Inner: 4px)",
+    "action": "omarchy-tactile-setup gaps 6 4"
+  },
+  "setup.tactile.gaps.spacious": {
+    "icon": "󰹍",
+    "label": "Spacious (Outer: 20px, Inner: 12px)",
+    "action": "omarchy-tactile-setup gaps 20 12"
+  },
+  "setup.tactile.gaps.zero": {
+    "icon": "󰹍",
+    "label": "Zero Gaps (Outer: 0px, Inner: 0px)",
+    "action": "omarchy-tactile-setup gaps 0 0"
+  },
+  "setup.tactile.interactive": {
+    "icon": "",
+    "label": "Interactive Wizard (TUI)",
+    "action": "omarchy-launch-floating-terminal-with-presentation 'omarchy-tactile-setup interactive'"
+  },
+  "setup.tactile.editor": {
+    "icon": "",
+    "label": "Edit Raw JSON Config",
+    "action": "omarchy-launch-config-editor \"$HOME/.config/tactile/config.json\""
   }
 }

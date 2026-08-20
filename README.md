@@ -85,8 +85,9 @@ Personal configuration and customizations for [Omarchy Linux](https://omarchy.or
 | `resize-step` | Resizes the focused window in 10% monitor width increments. |
 | `agyd` | Standalone shortcut executing `agy --dangerously-skip-permissions` with auto-approved tool execution. |
 | `omarchy-default-agent` | Agent switcher wrapper providing seamless selection of Antigravity (`agy`) in Omarchy. |
-| `tactile` | Interactive 2x3 grid HUD (`Super + T`) for 2-key bounding-box window snapping (`Q W E / A S D`). |
+| `tactile` | Interactive Grid HUD (`Super + T`) for 2-key bounding-box window snapping (`Q W E / A S D`). |
 | `tactile-autofill` | Background daemon that automatically snaps newly opened windows into unoccupied grid gaps. |
+| `omarchy-tactile-setup` | CLI & TUI helper for Tactile grid presets, dynamic row/col counts, weights, and gaps. |
 
 ---
 

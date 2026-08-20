@@ -5,6 +5,7 @@ Monitors Hyprland window creation events via socket2.
 When a new window opens on a workspace where existing windows occupy
 a Tactile sub-region (e.g. Left 2/3), it automatically snaps the new window
 to fill the unoccupied grid area (e.g. Right 1/3).
+Supports dynamic grid rows, columns, and asymmetric column weights.
 """
 
 import sys
@@ -39,8 +40,10 @@ def load_config():
                 pass
 
     return {
-        "gaps": { "outer": 12, "inner": 8, "top_bar": 35 },
-        "grid": { "rows": 2, "cols": 3 }
+        "grid": { "rows": 2, "cols": 3 },
+        "col_weights": [1.0, 1.0, 1.0],
+        "row_weights": [1.0, 1.0],
+        "gaps": { "outer": 12, "inner": 8, "top_bar": 35 }
     }
 
 
@@ -54,8 +57,35 @@ def get_active_clients_and_monitor():
         return [], None
 
 
+def compute_dimension_coords(canvas_start, canvas_total, inner, weights, idx1, idx2):
+    num = len(weights)
+    sum_w = sum(weights)
+    if sum_w <= 0:
+        sum_w = num
+
+    net_space = canvas_total - (num - 1) * inner
+    sizes = []
+    allocated = 0
+    for w in weights:
+        s = int((w / sum_w) * net_space)
+        sizes.append(s)
+        allocated += s
+    sizes[-1] += (net_space - allocated)
+
+    starts = []
+    curr = canvas_start
+    for s in sizes:
+        starts.append(curr)
+        curr += s + inner
+
+    target_start = starts[idx1]
+    target_size = sum(sizes[idx1:idx2 + 1]) + (idx2 - idx1) * inner
+
+    return target_start, target_size, sizes, starts
+
+
 def map_window_to_cells(win, mon, cfg):
-    """Determine which 2x3 grid cells a window currently occupies."""
+    """Determine which grid cells a window currently occupies."""
     if not win or not mon:
         return []
 
@@ -78,10 +108,22 @@ def map_window_to_cells(win, mon, cfg):
     canvas_w = scaled_w - (2 * outer)
     canvas_h = scaled_h - top_bar - (2 * outer)
 
-    cols = 3
-    rows = 2
-    cell_w = (canvas_w - ((cols - 1) * inner)) / cols
-    cell_h = (canvas_h - ((rows - 1) * inner)) / rows
+    grid = cfg.get('grid', {})
+    cols = grid.get('cols', 3)
+    rows = grid.get('rows', 2)
+
+    col_weights = cfg.get('col_weights', [1.0] * cols)
+    while len(col_weights) < cols:
+        col_weights.append(1.0)
+    col_weights = col_weights[:cols]
+
+    row_weights = cfg.get('row_weights', [1.0] * rows)
+    while len(row_weights) < rows:
+        row_weights.append(1.0)
+    row_weights = row_weights[:rows]
+
+    _, _, col_sizes, col_starts = compute_dimension_coords(canvas_x, canvas_w, inner, col_weights, 0, cols - 1)
+    _, _, row_sizes, row_starts = compute_dimension_coords(canvas_y, canvas_h, inner, row_weights, 0, rows - 1)
 
     win_at = win.get('at', [0, 0])
     win_size = win.get('size', [0, 0])
@@ -91,16 +133,14 @@ def map_window_to_cells(win, mon, cfg):
     occupied = []
     for r in range(rows):
         for c in range(cols):
-            cx = canvas_x + c * (cell_w + inner)
-            cy = canvas_y + r * (cell_h + inner)
-            cw = cell_w
-            ch = cell_h
+            cx = col_starts[c]
+            cy = row_starts[r]
+            cw = col_sizes[c]
+            ch = row_sizes[r]
 
-            # Check overlap between window rect and cell rect
             overlap_x = max(0, min(wx + ww, cx + cw) - max(wx, cx))
             overlap_y = max(0, min(wy + wh, cy + ch) - max(wy, cy))
             
-            # If overlap covers at least 30% of the cell
             if (overlap_x * overlap_y) > (0.30 * cw * ch):
                 occupied.append((r, c))
 
@@ -113,9 +153,7 @@ def autofill_new_window(new_addr, workspace_id_or_name):
     if not mon:
         return
 
-    # Filter clients on the target workspace
     ws_str = str(workspace_id_or_name).strip()
-    
     existing_clients = []
     for c in clients:
         c_addr = c.get('address', '').lower()
@@ -130,28 +168,29 @@ def autofill_new_window(new_addr, workspace_id_or_name):
     if not existing_clients:
         return
 
-    # Check which cells existing windows occupy
+    grid = cfg.get('grid', {})
+    cols = grid.get('cols', 3)
+    rows = grid.get('rows', 2)
+    total_cells = rows * cols
+
     occupied_cells = set()
     for c in existing_clients:
         cells = map_window_to_cells(c, mon, cfg)
         for cell in cells:
             occupied_cells.add(cell)
 
-    # Only auto-fill if there are occupied cells AND there are empty cells left
-    if not occupied_cells or len(occupied_cells) >= 6:
+    if not occupied_cells or len(occupied_cells) >= total_cells:
         return
 
-    # Find all unoccupied cells
     unoccupied = []
-    for r in range(2):
-        for c in range(3):
+    for r in range(rows):
+        for c in range(cols):
             if (r, c) not in occupied_cells:
                 unoccupied.append((r, c))
 
     if not unoccupied:
         return
 
-    # Calculate bounding box spanning unoccupied cells
     min_r = min(r for r, c in unoccupied)
     max_r = max(r for r, c in unoccupied)
     min_c = min(c for r, c in unoccupied)
@@ -176,21 +215,19 @@ def autofill_new_window(new_addr, workspace_id_or_name):
     canvas_w = scaled_w - (2 * outer)
     canvas_h = scaled_h - top_bar - (2 * outer)
 
-    cols = 3
-    rows = 2
-    cell_w = (canvas_w - ((cols - 1) * inner)) / cols
-    cell_h = (canvas_h - ((rows - 1) * inner)) / rows
+    col_weights = cfg.get('col_weights', [1.0] * cols)
+    while len(col_weights) < cols:
+        col_weights.append(1.0)
+    col_weights = col_weights[:cols]
 
-    target_x = int(canvas_x + min_c * (cell_w + inner))
-    target_y = int(canvas_y + min_r * (cell_h + inner))
+    row_weights = cfg.get('row_weights', [1.0] * rows)
+    while len(row_weights) < rows:
+        row_weights.append(1.0)
+    row_weights = row_weights[:rows]
 
-    span_cols = (max_c - min_c + 1)
-    span_rows = (max_r - min_r + 1)
+    target_x, target_w, _, _ = compute_dimension_coords(canvas_x, canvas_w, inner, col_weights, min_c, max_c)
+    target_y, target_h, _, _ = compute_dimension_coords(canvas_y, canvas_h, inner, row_weights, min_r, max_r)
 
-    target_w = int(span_cols * cell_w + (span_cols - 1) * inner)
-    target_h = int(span_rows * cell_h + (span_rows - 1) * inner)
-
-    # Dispatch positioning for new window
     script = f'''
 hyprctl dispatch "hl.dsp.focus({{ window = 'address:{new_addr}' }})"
 hyprctl dispatch "hl.dsp.window.float({{ action = 'on' }})"
@@ -224,13 +261,11 @@ def run_daemon():
             while "\n" in buffer:
                 line, buffer = buffer.split("\n", 1)
                 if line.startswith("openwindow>>"):
-                    # Format: openwindow>>[address],[workspace],[class],[title]
                     payload = line[len("openwindow>>"):]
                     parts = payload.split(",")
                     if len(parts) >= 2:
                         addr = "0x" + parts[0].lstrip("0x")
                         ws = parts[1]
-                        # Grace delay for window to map in clients list
                         time.sleep(0.06)
                         autofill_new_window(addr, ws)
         except Exception:

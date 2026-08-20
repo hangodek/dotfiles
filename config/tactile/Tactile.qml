@@ -25,30 +25,52 @@ PanelWindow {
         "clients": [],
         "config": {
             "gaps": { "outer": 12, "inner": 8, "top_bar": 35 },
-            "grid": { "rows": 2, "cols": 3, "keys": [["q", "w", "e"], ["a", "s", "d"]] }
+            "grid": { "rows": 2, "cols": 3, "keys": [["q", "w", "e"], ["a", "s", "d"]] },
+            "col_weights": [1.0, 1.0, 1.0],
+            "row_weights": [1.0, 1.0]
         }
     }
 
     property var firstKeyPos: null
     property var hoveredKeyPos: null
-
-    property var keyMap: {
-        "q": [0, 0], "w": [0, 1], "e": [0, 2],
-        "a": [1, 0], "s": [1, 1], "d": [1, 2]
-    }
-
-    property var subNames: [
-        ["Top Left", "Top Mid", "Top Right"],
-        ["Bottom Left", "Bottom Mid", "Bottom Right"]
-    ]
+    property var keyMap: ({})
+    property var gridModel: []
 
     Component.onCompleted: {
         try {
             var raw = Quickshell.env("TACTILE_STATE_JSON") || "{}";
             root.stateData = JSON.parse(raw);
+            root.buildGridModel();
         } catch (e) {
             console.log("Error parsing state JSON:", e);
         }
+    }
+
+    function buildGridModel() {
+        var grid = (root.stateData.config && root.stateData.config.grid) || { rows: 2, cols: 3, keys: [["q", "w", "e"], ["a", "s", "d"]] };
+        var keys = grid.keys || [["q", "w", "e"], ["a", "s", "d"]];
+        var rows = grid.rows || keys.length;
+        var cols = grid.cols || (keys[0] ? keys[0].length : 3);
+
+        var model = [];
+        var kmap = {};
+
+        for (var r = 0; r < rows; r++) {
+            for (var c = 0; c < cols; c++) {
+                var k = (keys[r] && keys[r][c]) ? keys[r][c] : "";
+                if (k !== "") {
+                    kmap[k.toLowerCase()] = [r, c];
+                    model.push({
+                        key: k.toUpperCase(),
+                        r: r,
+                        c: c,
+                        subtext: "R" + (r + 1) + " C" + (c + 1)
+                    });
+                }
+            }
+        }
+        root.keyMap = kmap;
+        root.gridModel = model;
     }
 
     function quitOverlay() {
@@ -57,17 +79,12 @@ PanelWindow {
 
     function isInRange(r, c) {
         if (!root.firstKeyPos) return false;
-        var r1 = root.firstKeyPos[0];
-        var c1 = root.firstKeyPos[1];
-        
+        var r1 = root.firstKeyPos[0], c1 = root.firstKeyPos[1];
         var targetPos = root.hoveredKeyPos || root.firstKeyPos;
-        var r2 = targetPos[0];
-        var c2 = targetPos[1];
+        var r2 = targetPos[0], c2 = targetPos[1];
 
-        var minR = Math.min(r1, r2);
-        var maxR = Math.max(r1, r2);
-        var minC = Math.min(c1, c2);
-        var maxC = Math.max(c1, c2);
+        var minR = Math.min(r1, r2), maxR = Math.max(r1, r2);
+        var minC = Math.min(c1, c2), maxC = Math.max(c1, c2);
 
         return (r >= minR && r <= maxR && c >= minC && c <= maxC);
     }
@@ -75,6 +92,39 @@ PanelWindow {
     function isFirstKey(r, c) {
         if (!root.firstKeyPos) return false;
         return (root.firstKeyPos[0] === r && root.firstKeyPos[1] === c);
+    }
+
+    function computeDimensionCoords(canvasStart, canvasTotal, inner, weights, idx1, idx2) {
+        var num = weights.length;
+        var sumW = 0;
+        for (var i = 0; i < num; i++) sumW += weights[i];
+        if (sumW <= 0) sumW = num;
+
+        var netSpace = canvasTotal - (num - 1) * inner;
+        var sizes = [];
+        var allocated = 0;
+        for (var i = 0; i < num; i++) {
+            var s = Math.floor((weights[i] / sumW) * netSpace);
+            sizes.push(s);
+            allocated += s;
+        }
+        sizes[num - 1] += (netSpace - allocated);
+
+        var starts = [];
+        var curr = canvasStart;
+        for (var i = 0; i < num; i++) {
+            starts.push(curr);
+            curr += sizes[i] + inner;
+        }
+
+        var targetStart = starts[idx1];
+        var targetSize = 0;
+        for (var i = idx1; i <= idx2; i++) {
+            targetSize += sizes[i];
+        }
+        targetSize += (idx2 - idx1) * inner;
+
+        return { start: targetStart, size: targetSize };
     }
 
     function snap(pos1, pos2) {
@@ -95,27 +145,34 @@ PanelWindow {
         var scaledH = Math.floor(monH / scale);
 
         var gaps = (root.stateData.config && root.stateData.config.gaps) || { outer: 12, inner: 8, top_bar: 35 };
-        var outer = gaps.outer || 12;
-        var inner = gaps.inner || 8;
-        var topBar = gaps.top_bar || 35;
+        var outer = gaps.outer !== undefined ? gaps.outer : 12;
+        var inner = gaps.inner !== undefined ? gaps.inner : 8;
+        var topBar = gaps.top_bar !== undefined ? gaps.top_bar : 35;
 
         var canvasX = monX + outer;
         var canvasY = monY + topBar + outer;
         var canvasW = scaledW - (2 * outer);
         var canvasH = scaledH - topBar - (2 * outer);
 
-        var cols = 3, rows = 2;
-        var cellW = (canvasW - ((cols - 1) * inner)) / cols;
-        var cellH = (canvasH - ((rows - 1) * inner)) / rows;
+        var grid = (root.stateData.config && root.stateData.config.grid) || { rows: 2, cols: 3 };
+        var cols = grid.cols || 3;
+        var rows = grid.rows || 2;
 
-        var targetX = Math.floor(canvasX + minC * (cellW + inner));
-        var targetY = Math.floor(canvasY + minR * (cellH + inner));
+        var colWeights = (root.stateData.config && root.stateData.config.col_weights) || [];
+        while (colWeights.length < cols) colWeights.push(1.0);
+        colWeights = colWeights.slice(0, cols);
 
-        var spanCols = (maxC - minC + 1);
-        var spanRows = (maxR - minR + 1);
+        var rowWeights = (root.stateData.config && root.stateData.config.row_weights) || [];
+        while (rowWeights.length < rows) rowWeights.push(1.0);
+        rowWeights = rowWeights.slice(0, rows);
 
-        var targetW = Math.floor(spanCols * cellW + (spanCols - 1) * inner);
-        var targetH = Math.floor(spanRows * cellH + (spanRows - 1) * inner);
+        var xRes = computeDimensionCoords(canvasX, canvasW, inner, colWeights, minC, maxC);
+        var yRes = computeDimensionCoords(canvasY, canvasH, inner, rowWeights, minR, maxR);
+
+        var targetX = xRes.start;
+        var targetY = yRes.start;
+        var targetW = xRes.size;
+        var targetH = yRes.size;
 
         var win = root.stateData.window || {};
         var addr = win.address || "";
@@ -132,14 +189,13 @@ PanelWindow {
         script += "hyprctl dispatch \"hl.dsp.window.resize({ x = " + targetW + ", y = " + targetH + " })\"\n";
         script += "hyprctl dispatch \"hl.dsp.window.move({ x = " + targetX + ", y = " + targetY + " })\"\n";
 
-        // Find other windows on this workspace to rearrange into unoccupied space
+        // Multi-window auto-reorganize into unoccupied space
         var clients = root.stateData.clients || [];
         var targetWs = (win.workspace && win.workspace.name) || "";
         var otherClients = clients.filter(function(c) {
             return c.address !== addr && (c.workspace && c.workspace.name === targetWs) && !c.hidden && c.mapped;
         });
 
-        // Determine unoccupied cells
         var occupied = {};
         for (var r = minR; r <= maxR; r++) {
             for (var c = minC; c <= maxC; c++) {
@@ -166,22 +222,16 @@ PanelWindow {
                 if (uc > oMaxC) oMaxC = uc;
             }
 
-            var oTargetX = Math.floor(canvasX + oMinC * (cellW + inner));
-            var oTargetY = Math.floor(canvasY + oMinR * (cellH + inner));
-            var oSpanCols = (oMaxC - oMinC + 1);
-            var oSpanRows = (oMaxR - oMinR + 1);
-            var oTargetW = Math.floor(oSpanCols * cellW + (oSpanCols - 1) * inner);
-            var oTargetH = Math.floor(oSpanRows * cellH + (oSpanRows - 1) * inner);
+            var oXRes = computeDimensionCoords(canvasX, canvasW, inner, colWeights, oMinC, oMaxC);
+            var oYRes = computeDimensionCoords(canvasY, canvasH, inner, rowWeights, oMinR, oMaxR);
 
             for (var j = 0; j < otherClients.length; j++) {
                 var oAddr = otherClients[j].address;
-                script += "hyprctl dispatch \"hl.dsp.window.fullscreen({ action = 'unset' })\"\n";
                 script += "hyprctl dispatch \"hl.dsp.focus({ window = 'address:" + oAddr + "' })\"\n";
                 script += "hyprctl dispatch \"hl.dsp.window.float({ action = 'on' })\"\n";
-                script += "hyprctl dispatch \"hl.dsp.window.resize({ x = " + oTargetW + ", y = " + oTargetH + " })\"\n";
-                script += "hyprctl dispatch \"hl.dsp.window.move({ x = " + oTargetX + ", y = " + oTargetY + " })\"\n";
+                script += "hyprctl dispatch \"hl.dsp.window.resize({ x = " + oXRes.size + ", y = " + oYRes.size + " })\"\n";
+                script += "hyprctl dispatch \"hl.dsp.window.move({ x = " + oXRes.start + ", y = " + oYRes.start + " })\"\n";
             }
-            // Return focus to active window
             script += "hyprctl dispatch \"hl.dsp.focus({ window = 'address:" + addr + "' })\"\n";
         }
 
@@ -218,33 +268,34 @@ PanelWindow {
 
         ColumnLayout {
             anchors.fill: parent
-            anchors.topMargin: ((root.stateData.config && root.stateData.config.gaps && root.stateData.config.gaps.top_bar) || 35) + ((root.stateData.config && root.stateData.config.gaps && root.stateData.config.gaps.outer) || 12)
-            anchors.bottomMargin: ((root.stateData.config && root.stateData.config.gaps && root.stateData.config.gaps.outer) || 12)
-            anchors.leftMargin: ((root.stateData.config && root.stateData.config.gaps && root.stateData.config.gaps.outer) || 12)
-            anchors.rightMargin: ((root.stateData.config && root.stateData.config.gaps && root.stateData.config.gaps.outer) || 12)
+            anchors.topMargin: ((root.stateData.config && root.stateData.config.gaps && root.stateData.config.gaps.top_bar) !== undefined ? root.stateData.config.gaps.top_bar : 35) + ((root.stateData.config && root.stateData.config.gaps && root.stateData.config.gaps.outer) !== undefined ? root.stateData.config.gaps.outer : 12)
+            anchors.bottomMargin: ((root.stateData.config && root.stateData.config.gaps && root.stateData.config.gaps.outer) !== undefined ? root.stateData.config.gaps.outer : 12)
+            anchors.leftMargin: ((root.stateData.config && root.stateData.config.gaps && root.stateData.config.gaps.outer) !== undefined ? root.stateData.config.gaps.outer : 12)
+            anchors.rightMargin: ((root.stateData.config && root.stateData.config.gaps && root.stateData.config.gaps.outer) !== undefined ? root.stateData.config.gaps.outer : 12)
             spacing: 16
 
             GridLayout {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                rows: 2
-                columns: 3
-                rowSpacing: ((root.stateData.config && root.stateData.config.gaps && root.stateData.config.gaps.inner) || 8)
-                columnSpacing: ((root.stateData.config && root.stateData.config.gaps && root.stateData.config.gaps.inner) || 8)
+                rows: (root.stateData.config && root.stateData.config.grid && root.stateData.config.grid.rows) || 2
+                columns: (root.stateData.config && root.stateData.config.grid && root.stateData.config.grid.cols) || 3
+                rowSpacing: ((root.stateData.config && root.stateData.config.gaps && root.stateData.config.gaps.inner) !== undefined ? root.stateData.config.gaps.inner : 8)
+                columnSpacing: ((root.stateData.config && root.stateData.config.gaps && root.stateData.config.gaps.inner) !== undefined ? root.stateData.config.gaps.inner : 8)
 
                 Repeater {
-                    model: [
-                        { key: "Q", r: 0, c: 0 },
-                        { key: "W", r: 0, c: 1 },
-                        { key: "E", r: 0, c: 2 },
-                        { key: "A", r: 1, c: 0 },
-                        { key: "S", r: 1, c: 1 },
-                        { key: "D", r: 1, c: 2 }
-                    ]
+                    model: root.gridModel
 
                     Rectangle {
+                        property var colWeights: (root.stateData.config && root.stateData.config.col_weights) || [1.0, 1.0, 1.0]
+                        property var rowWeights: (root.stateData.config && root.stateData.config.row_weights) || [1.0, 1.0]
+
                         Layout.fillWidth: true
                         Layout.fillHeight: true
+                        Layout.rowSpan: 1
+                        Layout.columnSpan: 1
+                        Layout.preferredWidth: (colWeights[modelData.c] !== undefined ? colWeights[modelData.c] : 1.0) * 100
+                        Layout.preferredHeight: (rowWeights[modelData.r] !== undefined ? rowWeights[modelData.r] : 1.0) * 100
+
                         radius: 16
 
                         property bool isSelected: root.isFirstKey(modelData.r, modelData.c)
@@ -283,16 +334,16 @@ PanelWindow {
                                 Layout.alignment: Qt.AlignHCenter
                                 text: modelData.key
                                 color: parent.parent.isSelected ? "#ffffff" : "#f1f3f4"
-                                font.pixelSize: 44
+                                font.pixelSize: 40
                                 font.bold: true
                                 font.family: "JetBrains Mono, CaskaydiaMono Nerd Font, Fira Code, monospace"
                             }
 
                             Text {
                                 Layout.alignment: Qt.AlignHCenter
-                                text: root.subNames[modelData.r][modelData.c]
+                                text: modelData.subtext
                                 color: parent.parent.isSelected ? "#8ab4f8" : "#99ffffff"
-                                font.pixelSize: 13
+                                font.pixelSize: 12
                                 font.weight: Font.DemiBold
                             }
                         }
@@ -315,7 +366,7 @@ PanelWindow {
                     text: {
                         var title = (root.stateData.window && root.stateData.window.title) || "Active Window";
                         if (title.length > 36) title = title.substring(0, 33) + "...";
-                        return "Tactile: " + title + "  •  Press 2 keys (e.g. Q D = Full, Q A = Left, W D = Right)  •  Esc to cancel";
+                        return "Tactile (" + ((root.stateData.config && root.stateData.config.grid && root.stateData.config.grid.rows) || 2) + "×" + ((root.stateData.config && root.stateData.config.grid && root.stateData.config.grid.cols) || 3) + "): " + title + "  •  Press 2 keys  •  Esc to cancel";
                     }
                     color: "#e8eaed"
                     font.pixelSize: 13

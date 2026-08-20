@@ -1,0 +1,250 @@
+#!/usr/bin/env python3
+"""
+Omarchy Tactile Configuration Helper
+Manages grid presets, dimensions, column weights, and gaps for Tactile.
+Automatically restarts the tactile-autofill daemon on config change.
+"""
+
+import sys
+import os
+import json
+import subprocess
+
+CONFIG_PATH = os.path.expanduser("~/.config/tactile/config.json")
+DOTFILES_CONFIG = os.path.expanduser("~/dotfiles/config/tactile/config.json")
+
+KEY_ROWS = [
+    ["q", "w", "e", "r", "t", "y"],
+    ["a", "s", "d", "f", "g", "h"],
+    ["z", "x", "c", "v", "b", "n"],
+    ["1", "2", "3", "4", "5", "6"]
+]
+
+PRESETS = {
+    "2x3": {
+        "rows": 2, "cols": 3,
+        "keys": [["q", "w", "e"], ["a", "s", "d"]],
+        "col_weights": [1.0, 1.0, 1.0], "row_weights": [1.0, 1.0]
+    },
+    "3x3": {
+        "rows": 3, "cols": 3,
+        "keys": [["q", "w", "e"], ["a", "s", "d"], ["z", "x", "c"]],
+        "col_weights": [1.0, 1.0, 1.0], "row_weights": [1.0, 1.0, 1.0]
+    },
+    "2x2": {
+        "rows": 2, "cols": 2,
+        "keys": [["q", "w"], ["a", "s"]],
+        "col_weights": [1.0, 1.0], "row_weights": [1.0, 1.0]
+    },
+    "1x3": {
+        "rows": 1, "cols": 3,
+        "keys": [["q", "w", "e"]],
+        "col_weights": [1.0, 1.0, 1.0], "row_weights": [1.0]
+    },
+    "2x4": {
+        "rows": 2, "cols": 4,
+        "keys": [["q", "w", "e", "r"], ["a", "s", "d", "f"]],
+        "col_weights": [1.0, 1.0, 1.0, 1.0], "row_weights": [1.0, 1.0]
+    }
+}
+
+
+def load_config():
+    paths = [CONFIG_PATH, DOTFILES_CONFIG]
+    for p in paths:
+        if os.path.isfile(p):
+            try:
+                with open(p, "r") as f:
+                    return json.load(f)
+            except Exception:
+                pass
+    return {
+        "grid": PRESETS["2x3"],
+        "gaps": { "outer": 12, "inner": 8, "top_bar": 35 }
+    }
+
+
+def save_config(cfg):
+    for p in [CONFIG_PATH, DOTFILES_CONFIG]:
+        os.makedirs(os.path.dirname(p), exist_ok=True)
+        try:
+            with open(p, "w") as f:
+                json.dump(cfg, f, indent=2)
+        except Exception as e:
+            print(f"Error saving {p}: {e}", file=sys.stderr)
+
+    # Reload background autofill daemon with new geometry
+    subprocess.run(["pkill", "-f", "tactile-autofill"], check=False)
+    subprocess.run(["hyprctl", "dispatch", "hl.dsp.exec_cmd('tactile-autofill')"], check=False)
+
+
+def regenerate_keys(rows, cols):
+    keys = []
+    for r in range(min(rows, len(KEY_ROWS))):
+        row_keys = []
+        for c in range(min(cols, len(KEY_ROWS[r]))):
+            row_keys.append(KEY_ROWS[r][c])
+        keys.append(row_keys)
+    return keys
+
+
+def main():
+    if len(sys.argv) < 2:
+        print("Usage: omarchy-tactile-setup <preset|weights|add-row|remove-row|add-col|remove-col|gaps|active-preset|active-weights>")
+        sys.exit(1)
+
+    cmd = sys.argv[1]
+    cfg = load_config()
+
+    if cmd == "preset":
+        if len(sys.argv) < 3:
+            print("Usage: omarchy-tactile-setup preset <2x3|3x3|2x2|1x3|2x4>")
+            sys.exit(1)
+        name = sys.argv[2]
+        if name in PRESETS:
+            preset_data = PRESETS[name]
+            cfg["grid"] = {
+                "rows": preset_data["rows"],
+                "cols": preset_data["cols"],
+                "keys": preset_data["keys"]
+            }
+            cfg["col_weights"] = preset_data["col_weights"]
+            cfg["row_weights"] = preset_data["row_weights"]
+            save_config(cfg)
+            print(f"Tactile preset set to: {name}")
+        else:
+            print(f"Unknown preset: {name}", file=sys.stderr)
+            sys.exit(1)
+
+    elif cmd == "active-preset":
+        rows = cfg.get("grid", {}).get("rows", 2)
+        cols = cfg.get("grid", {}).get("cols", 3)
+        weights = cfg.get("col_weights", [1.0] * cols)
+        is_equal = len(set(weights)) <= 1
+        
+        name = f"{rows}x{cols}"
+        if name in PRESETS and is_equal:
+            print(name)
+        else:
+            print("custom")
+
+    elif cmd == "weights":
+        if len(sys.argv) < 3:
+            print("Usage: omarchy-tactile-setup weights <w1,w2,w3...>")
+            sys.exit(1)
+        raw_w = sys.argv[2].split(",")
+        try:
+            weights = [float(w.strip()) for w in raw_w]
+            cols = cfg.get("grid", {}).get("cols", 3)
+            if len(weights) < cols:
+                weights.extend([1.0] * (cols - len(weights)))
+            elif len(weights) > cols:
+                weights = weights[:cols]
+            cfg["col_weights"] = weights
+            save_config(cfg)
+            print(f"Tactile column weights set to: {weights}")
+        except ValueError:
+            print("Invalid weights format. Expected numbers like 2,1,1", file=sys.stderr)
+            sys.exit(1)
+
+    elif cmd == "active-weights":
+        weights = cfg.get("col_weights", [1.0, 1.0, 1.0])
+        w_str = ",".join(str(int(w) if w.is_integer() else w) for w in weights)
+        print(w_str)
+
+    elif cmd == "add-row":
+        rows = cfg.get("grid", {}).get("rows", 2)
+        if rows < 4:
+            rows += 1
+            cols = cfg.get("grid", {}).get("cols", 3)
+            cfg["grid"]["rows"] = rows
+            cfg["grid"]["keys"] = regenerate_keys(rows, cols)
+            cfg["row_weights"] = [1.0] * rows
+            save_config(cfg)
+            print(f"Rows increased to {rows}")
+
+    elif cmd == "remove-row":
+        rows = cfg.get("grid", {}).get("rows", 2)
+        if rows > 1:
+            rows -= 1
+            cols = cfg.get("grid", {}).get("cols", 3)
+            cfg["grid"]["rows"] = rows
+            cfg["grid"]["keys"] = regenerate_keys(rows, cols)
+            cfg["row_weights"] = [1.0] * rows
+            save_config(cfg)
+            print(f"Rows decreased to {rows}")
+
+    elif cmd == "add-col":
+        cols = cfg.get("grid", {}).get("cols", 3)
+        if cols < 6:
+            cols += 1
+            rows = cfg.get("grid", {}).get("rows", 2)
+            cfg["grid"]["cols"] = cols
+            cfg["grid"]["keys"] = regenerate_keys(rows, cols)
+            cfg["col_weights"] = [1.0] * cols
+            save_config(cfg)
+            print(f"Columns increased to {cols}")
+
+    elif cmd == "remove-col":
+        cols = cfg.get("grid", {}).get("cols", 3)
+        if cols > 1:
+            cols -= 1
+            rows = cfg.get("grid", {}).get("rows", 2)
+            cfg["grid"]["cols"] = cols
+            cfg["grid"]["keys"] = regenerate_keys(rows, cols)
+            cfg["col_weights"] = [1.0] * cols
+            save_config(cfg)
+            print(f"Columns decreased to {cols}")
+
+    elif cmd == "gaps":
+        if len(sys.argv) < 4:
+            print("Usage: omarchy-tactile-setup gaps <outer> <inner>")
+            sys.exit(1)
+        outer = int(sys.argv[2])
+        inner = int(sys.argv[3])
+        if "gaps" not in cfg:
+            cfg["gaps"] = {}
+        cfg["gaps"]["outer"] = outer
+        cfg["gaps"]["inner"] = inner
+        save_config(cfg)
+        print(f"Tactile gaps set to: outer={outer}px, inner={inner}px")
+
+    elif cmd == "interactive":
+        print("\n\033[1;36m=== Tactile Grid Configuration Wizard ===\033[0m\n")
+        print(f"Current Layout: {cfg.get('grid', {}).get('rows', 2)} Rows × {cfg.get('grid', {}).get('cols', 3)} Columns")
+        print(f"Column Weights: {cfg.get('col_weights', [1.0, 1.0, 1.0])}")
+        print(f"Gaps: Outer {cfg.get('gaps', {}).get('outer', 12)}px, Inner {cfg.get('gaps', {}).get('inner', 8)}px\n")
+        print("Choose a Preset:")
+        print("  1) 2 × 3 Standard (QWE / ASD)")
+        print("  2) 3 × 3 Precision (QWE / ASD / ZXC)")
+        print("  3) 2 × 2 Quadrants (QW / AS)")
+        print("  4) 1 × 3 Triple Columns (QWE)")
+        print("  5) 2 × 4 Ultrawide (QWER / ASDF)")
+        print("  6) Custom Column Weights (e.g. Master Left 2:1:1)")
+        print("  0) Exit\n")
+        try:
+            choice = input("Enter choice [1-6, 0]: ").strip()
+            if choice == "1":
+                os.system("omarchy-tactile-setup preset 2x3")
+            elif choice == "2":
+                os.system("omarchy-tactile-setup preset 3x3")
+            elif choice == "3":
+                os.system("omarchy-tactile-setup preset 2x2")
+            elif choice == "4":
+                os.system("omarchy-tactile-setup preset 1x3")
+            elif choice == "5":
+                os.system("omarchy-tactile-setup preset 2x4")
+            elif choice == "6":
+                w = input("Enter column weights (e.g. 2,1,1 or 1,3,1): ").strip()
+                if w:
+                    os.system(f"omarchy-tactile-setup weights {w}")
+        except KeyboardInterrupt:
+            pass
+
+    else:
+        print(f"Unknown command: {cmd}", file=sys.stderr)
+        sys.exit(1)
+
+
+if __name__ == '__main__':
+    main()
