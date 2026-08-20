@@ -181,7 +181,15 @@ Personal dotfiles, custom window management subsystems, and low-latency system o
 
 ## 🔬 Performance Benchmarks & Empirical Proof
 
-> **System Test Environment**: Lenovo ThinkPad X395 | AMD Ryzen 5 PRO 3500U with Radeon Vega 8 Mobile Graphics | `linux-cachyos` (BORE Scheduler) | 16 GB RAM + 13.6 GB ZRAM.
+> **Tested on this System Specification**:
+>
+> | Component | Specification |
+> | :--- | :--- |
+> | **Hardware** | Lenovo ThinkPad X395 |
+> | **CPU / GPU** | AMD Ryzen 5 PRO 3500U with Radeon Vega 8 Mobile Graphics |
+> | **RAM / Swap** | 16 GB Physical RAM + 13.6 GB ZRAM (`zstd`) |
+> | **OS & WM** | Arch Linux (Omarchy) + Hyprland (Wayland) + Quickshell |
+> | **Active Kernel** | `linux-cachyos` (BORE Scheduler, `-O3 -march=x86-64-v3`, ThinLTO) |
 >
 > All tests are 100% automated, process-isolated, and reproducible. Run `bash tests/run-all-tests.sh` to execute the live test suite on your own machine.
 
@@ -197,21 +205,21 @@ Tested with 30 consecutive iterations measuring end-to-end execution latency:
 
 ---
 
-### 2. High-Density 10-Window Sequential Close (Zero Stacking / "Ditimpa" Test)
+### 2. High-Density 10-Window Sequential Close (Zero Overlaps Test)
 
 Tested opening 10 windows sequentially in Tactile mode and closing them one by one through all 9 stages:
 
 | Stage | Windows Remaining | Overlap Detection Threshold | Overlaps Detected | Result |
 | :--- | :--- | :--- | :--- | :--- |
-| **Step 1** | 9 windows remaining | $> 15\text{px} \times 15\text{px}$ | **0 Overlaps / 0 Ditimpa** | **PASS** ✅ |
-| **Step 2** | 8 windows remaining | $> 15\text{px} \times 15\text{px}$ | **0 Overlaps / 0 Ditimpa** | **PASS** ✅ |
-| **Step 3** | 7 windows remaining | $> 15\text{px} \times 15\text{px}$ | **0 Overlaps / 0 Ditimpa** | **PASS** ✅ |
-| **Step 4** | 6 windows remaining | $> 15\text{px} \times 15\text{px}$ | **0 Overlaps / 0 Ditimpa** | **PASS** ✅ |
-| **Step 5** | 5 windows remaining | $> 15\text{px} \times 15\text{px}$ | **0 Overlaps / 0 Ditimpa** | **PASS** ✅ |
-| **Step 6** | 4 windows remaining | $> 15\text{px} \times 15\text{px}$ | **0 Overlaps / 0 Ditimpa** | **PASS** ✅ |
-| **Step 7** | 3 windows remaining | $> 15\text{px} \times 15\text{px}$ | **0 Overlaps / 0 Ditimpa** | **PASS** ✅ |
-| **Step 8** | 2 windows remaining | $> 15\text{px} \times 15\text{px}$ | **0 Overlaps / 0 Ditimpa** | **PASS** ✅ |
-| **Step 9** | 1 window (100% Full Canvas) | $> 15\text{px} \times 15\text{px}$ | **0 Overlaps / 0 Ditimpa** | **PASS** ✅ |
+| **Step 1** | 9 windows remaining | $> 15\text{px} \times 15\text{px}$ | **0 Overlaps** | **PASS** ✅ |
+| **Step 2** | 8 windows remaining | $> 15\text{px} \times 15\text{px}$ | **0 Overlaps** | **PASS** ✅ |
+| **Step 3** | 7 windows remaining | $> 15\text{px} \times 15\text{px}$ | **0 Overlaps** | **PASS** ✅ |
+| **Step 4** | 6 windows remaining | $> 15\text{px} \times 15\text{px}$ | **0 Overlaps** | **PASS** ✅ |
+| **Step 5** | 5 windows remaining | $> 15\text{px} \times 15\text{px}$ | **0 Overlaps** | **PASS** ✅ |
+| **Step 6** | 4 windows remaining | $> 15\text{px} \times 15\text{px}$ | **0 Overlaps** | **PASS** ✅ |
+| **Step 7** | 3 windows remaining | $> 15\text{px} \times 15\text{px}$ | **0 Overlaps** | **PASS** ✅ |
+| **Step 8** | 2 windows remaining | $> 15\text{px} \times 15\text{px}$ | **0 Overlaps** | **PASS** ✅ |
+| **Step 9** | 1 window (100% Full Canvas) | $> 15\text{px} \times 15\text{px}$ | **0 Overlaps** | **PASS** ✅ |
 
 ---
 

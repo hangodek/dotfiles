@@ -9,7 +9,7 @@ Comprehensive Automated Test & Benchmark Suite for Omarchy & Hyprland Dotfiles.
 
 Empirically verifies:
 1. Native C Dispatcher vs Legacy Latency (swap-window, nav-window, resize-step).
-2. 10-Window Sequential Close & Void Collapse with Zero Overlaps (No 'Ditimpa').
+2. 10-Window Sequential Close & Void Collapse with Zero Overlaps.
 3. Multi-Cell Long Window Collapse (1x2 Full-Height Column & 1x3 Full-Width Row).
 4. Hyprland Configuration & Animation Curve Validation.
 """
@@ -173,7 +173,7 @@ def run_void_collapse_10window_test():
             print(f"  Step {step+1} (Remaining {len(rem_wins)} windows): {FAIL} Overlaps: {overlaps}")
             all_passed = False
         else:
-            print(f"  Step {step+1} (Remaining {len(rem_wins)} windows): {PASS} 0 Overlaps / 0 Ditimpa")
+            print(f"  Step {step+1} (Remaining {len(rem_wins)} windows): {PASS} 0 Overlaps")
 
     # Clean up last remaining test window
     for addr in test_addrs:
@@ -319,7 +319,7 @@ def main():
     print(f"| :--- | :--- | :--- | :--- | :--- |")
     for name, leg, nat, min_val, sp in lat_results:
         print(f"| {name} | {leg:.2f} ms | {nat:.2f} ms (Min: {min_val:.2f}ms) | {sp:.1f}x | {PASS} |")
-    print(f"| 10-Window Sequential Close (No Ditimpa) | Overlaps on >6 | 0 Overlaps across 10 windows | Flawless | {PASS if v10_passed else FAIL} |")
+    print(f"| 10-Window Sequential Close (Zero Overlaps) | Overlaps on >6 | 0 Overlaps across 10 windows | Flawless | {PASS if v10_passed else FAIL} |")
     print(f"| Multi-Cell Long Window Expansion | Failed (Gaps) | 100% Canvas Coverage | Perfect | {PASS if long_passed else FAIL} |")
     print(f"| Hyprland Configuration Syntax | N/A | 0 Config Errors | Pristine | {PASS if cfg_passed else FAIL} |")
     print(f"{BOLD}======================================================{RESET}")
