@@ -78,10 +78,16 @@ if [[ -f "$DOTFILES/config/bash/aliases.sh" ]]; then
   fi
 fi
 
+echo "--> Compiling high-performance native helpers..."
+if [[ -f "$DOTFILES/local/bin/swap-window.c" ]]; then
+  gcc -O3 "$DOTFILES/local/bin/swap-window.c" -o "$DOTFILES/local/bin/swap-window"
+  echo "    compiled swap-window native helper"
+fi
+
 echo "--> Installing personal scripts..."
 mkdir -p "$HOME/.local/bin"
 for s in "$DOTFILES/local/bin/"*; do
-  if [[ -f $s ]]; then
+  if [[ -f $s && ! "$s" =~ \.c$ ]]; then
     base=$(basename "$s")
     ln -sf "$s" "$HOME/.local/bin/$base"
     chmod +x "$s"
