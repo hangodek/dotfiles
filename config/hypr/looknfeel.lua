@@ -52,6 +52,7 @@
 -- Custom modern Bezier curves
 hl.curve("overshoot", { type = "bezier", points = { { 0.05, 0.9 }, { 0.1, 1.05 } } })
 hl.curve("smoothOut", { type = "bezier", points = { { 0.16, 1 }, { 0.3, 1 } } })
+hl.curve("snappy", { type = "bezier", points = { { 0.2, 0.9 }, { 0.1, 1.0 } } })
 
 -- Smooth workspace transition animation (Classic Slide)
 hl.animation({
@@ -62,14 +63,14 @@ hl.animation({
   style = "slide",
 })
 
--- Fluid window animations (open, close, splits, resize, moves)
-hl.animation({ leaf = "windows", enabled = true, speed = 4.2, bezier = "overshoot" })
-hl.animation({ leaf = "windowsIn", enabled = true, speed = 3.8, bezier = "overshoot", style = "popin 82%" })
-hl.animation({ leaf = "windowsOut", enabled = true, speed = 2.8, bezier = "smoothOut", style = "popin 82%" })
-hl.animation({ leaf = "windowsMove", enabled = true, speed = 4.2, bezier = "overshoot" })
+-- Fluid buttery-smooth window animations (open, close, splits, resize, moves)
+hl.animation({ leaf = "windows", enabled = true, speed = 4.5, bezier = "smoothOut" })
+hl.animation({ leaf = "windowsIn", enabled = true, speed = 4.2, bezier = "smoothOut", style = "popin 88%" })
+hl.animation({ leaf = "windowsOut", enabled = true, speed = 3.0, bezier = "smoothOut", style = "popin 88%" })
+hl.animation({ leaf = "windowsMove", enabled = true, speed = 4.8, bezier = "smoothOut" })
 
 -- Smooth window focus cross-fade
-hl.animation({ leaf = "fadeSwitch", enabled = true, speed = 3.2, bezier = "smoothOut" })
+hl.animation({ leaf = "fadeSwitch", enabled = true, speed = 3.5, bezier = "smoothOut" })
 
 -- Smooth scratchpad transition animation (tuned in & smooth out)
 hl.animation({ leaf = "specialWorkspace", enabled = true, speed = 4.5, bezier = "smoothOut", style = "slidevert" })
