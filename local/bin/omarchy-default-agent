@@ -1,0 +1,24 @@
+#!/bin/bash
+# Omarchy default agent selector with Antigravity (agy) support
+
+agent_file="$HOME/.config/omarchy/defaults/agent"
+
+if (($# == 0)); then
+  if [[ -f $agent_file ]]; then
+    read -r agent <"$agent_file"
+  fi
+  [[ -n ${agent:-} ]] && echo "$agent"
+  exit 0
+fi
+
+case "$1" in
+agy | antigravity)
+  mkdir -p "$(dirname "$agent_file")"
+  printf '%s\n' "agy" >"$agent_file"
+  echo "Default agent set to: Antigravity (agy)"
+  exit 0
+  ;;
+*)
+  exec /usr/bin/omarchy-default-agent "$@"
+  ;;
+esac

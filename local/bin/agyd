@@ -1,0 +1,3 @@
+#!/bin/bash
+# agyd: Launch Google Antigravity CLI with permissions auto-approved
+exec agy --dangerously-skip-permissions "$@"

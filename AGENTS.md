@@ -62,12 +62,17 @@
 │   ├── omarchy/
 │   │   ├── shell.json           # Top bar layout, transparency, and widget placement
 │   │   └── extensions/
-│   │       └── omarchy-menu.jsonc # App launcher menu customizations
+│   │       └── omarchy-menu.jsonc # App launcher menu customizations (Antigravity option)
+│   ├── bash/
+│   │   └── aliases.sh           # Shell aliases (agyd -> agy --dangerously-skip-permissions)
 │   ├── starship.toml            # Fast cross-shell prompt configuration
 │   └── git/
 │       └── config               # Git user identity and aliases
 └── local/
     └── bin/
+        ├── agyd                 # Auto-permission wrapper for Google Antigravity CLI
+        ├── omarchy-agent        # Default agent dispatcher with agy floating TUI support
+        ├── omarchy-default-agent# Agent switcher supporting Antigravity (agy)
         ├── scratchpad-deck      # Independent multi-deck floating workspace engine
         ├── nav-window           # Smooth 2D workspace & scratchpad tile navigator
         ├── resize-step          # 10% incremental window resizing helper

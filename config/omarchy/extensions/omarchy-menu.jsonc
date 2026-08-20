@@ -1,3 +1,14 @@
 {
-  // Omarchy menu extensions.
+  "setup.default.agent.agy": {
+    "icon": "󱚤",
+    "label": "Antigravity (agy)",
+    "checked": "[[ \"$(omarchy-default-agent)\" == \"agy\" ]]",
+    "action": "omarchy-default-agent agy"
+  },
+  "install.ai.antigravity": {
+    "icon": "󱚤",
+    "label": "Antigravity CLI",
+    "when": "! omarchy-cmd-present agy",
+    "action": "omarchy-launch-floating-terminal-with-presentation 'curl -fsSL https://antigravity.google.com/install.sh | bash'"
+  }
 }

@@ -63,6 +63,14 @@ if [[ -f "$DOTFILES/config/git/config" ]]; then
   echo "    linked git/config"
 fi
 
+if [[ -f "$DOTFILES/config/bash/aliases.sh" ]]; then
+  ln -sf "$DOTFILES/config/bash/aliases.sh" "$HOME/.bash_aliases"
+  echo "    linked ~/.bash_aliases"
+  if ! grep -q ".bash_aliases" "$HOME/.bashrc" 2>/dev/null; then
+    echo "[[ -f ~/.bash_aliases ]] && source ~/.bash_aliases" >> "$HOME/.bashrc"
+  fi
+fi
+
 echo "--> Installing personal scripts..."
 mkdir -p "$HOME/.local/bin"
 for s in "$DOTFILES/local/bin/"*; do

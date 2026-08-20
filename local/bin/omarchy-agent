@@ -1,0 +1,28 @@
+#!/bin/bash
+# Omarchy agent launcher with Antigravity (agy) support
+
+agent=$(omarchy-default-agent)
+
+if [[ "$agent" == "agy" ]]; then
+  inline=false
+  prompt=""
+  while (($#)); do
+    case "$1" in
+      --inline) inline=true; shift ;;
+      --pick) exec omarchy-menu summon setup.default.agent ;;
+      --prompt) prompt=${2:?--prompt needs a value}; shift 2 ;;
+      *) shift ;;
+    esac
+  done
+
+  command=(agy --dangerously-skip-permissions)
+  [[ -n "$prompt" ]] && command+=(--prompt "$prompt")
+
+  if [[ $inline == "true" ]]; then
+    exec "${command[@]}"
+  else
+    exec omarchy-launch-tui --app-id=org.omarchy.agent "${command[@]}"
+  fi
+else
+  exec /usr/bin/omarchy-agent "$@"
+fi
