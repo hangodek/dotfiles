@@ -4,18 +4,18 @@ Personal dotfiles, custom window management subsystems, and low-latency system o
 
 ---
 
-## Target Machine & System Environment
+## 🖥️ System & Software Environment
 
-| Component | Specification |
+| Component | Tested Version / Environment |
 | :--- | :--- |
-| Hardware | Lenovo ThinkPad X395 |
-| CPU / GPU | AMD Ryzen 5 PRO 3500U with Radeon Vega 8 Mobile Graphics |
-| RAM / Swap | 16 GB Physical RAM + 13.6 GB ZRAM (zstd) |
-| OS & WM | Arch Linux (Omarchy) + Hyprland (Wayland) + Quickshell |
-| Active Kernel | linux-cachyos (BORE Scheduler, -O3 -march=x86-64-v3, ThinLTO) |
-| Audio Stack | PipeWire 32-bit Float + Realtek ALC257 + rtkit-daemon (Priority 99) |
-| Default Browser | Microsoft Edge (microsoft-edge.desktop) |
-| Default Shell | Fish / Bash with Starship Prompt |
+| **Operating System** | Arch Linux (Rolling) |
+| **Omarchy Suite** | `v4.0.0` |
+| **Window Manager** | Hyprland `v0.56.2` (Wayland `1.26.0`) |
+| **Shell & UI** | Quickshell `v0.3.0` |
+| **Active Kernel** | `linux-cachyos 7.1.8-1` (BORE Scheduler, `-O3 -march=x86-64-v3`, ThinLTO) |
+| **Audio Server** | PipeWire 32-bit Float + `rtkit-daemon` (Real-Time Priority 99) |
+| **Default Terminal** | Foot / Alacritty / Ghostty |
+| **Default Shell** | Fish / Bash with Starship Prompt |
 
 ---
 
