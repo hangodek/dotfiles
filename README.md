@@ -1,67 +1,66 @@
-# 🚀 Han's Dotfiles for Omarchy & Hyprland
+# Han's Dotfiles for Omarchy & Hyprland
 
-Personal dotfiles, high-performance native C helpers, and low-latency system optimizations for **Arch Linux** + **Omarchy** + **Hyprland** + **Quickshell**.
-
----
-
-## ✨ Features & Architecture
-
-- **Independent Multi-Deck Scratchpads (`special:deck_*`)**: Dynamic virtual floating workspaces (`scratchpad-deck`) supporting split tiling and smooth deck sliding (`Super + Up/Down`).
-- **Native C Spatial Navigation (`nav-window`)**: Compiled `gcc -O3` binary delivering sub-2ms window and deck navigation via direct UNIX domain socket IPC.
-- **Spotlight Menu Animations**: Hardware-accelerated zoom and fade curve patch (`Super + Space`) in 150ms.
-- **Google Antigravity AI (`agy` / `agyd`)**: Integrated autonomous AI CLI with dedicated floating TUI overlay (`Super + Shift + Ctrl + A`).
-- **CachyOS Performance Suite**: BORE CPU scheduler, TCP BBRv3 + CAKE queueing, and PipeWire Real-Time Priority 99 audio stack.
-- **Clean Programmer US Layout**: Standard quotes with CapsLock Compose key. Zero dead key annoyance.
+Personal dotfiles, native helper utilities, and system optimizations for Arch Linux, Omarchy, Hyprland, and Quickshell.
 
 ---
 
-## ⌨️ Keybindings
+## Features
 
-| Keybinding | Action |
-| :--- | :--- |
-| **`Alt + F`** | Toggle active scratchpad deck |
-| **`Super + Up` / `Down`** | Slide between scratchpad decks |
-| **`Super + Left` / `Right`** | Focus window / split tile (Native C IPC) |
-| **`Super + N` / `Alt + Shift + F`** | Open new scratchpad deck via App Menu |
-| **`Super + W`** | Smart close window (preserves deck focus) |
-| **`Super + O`** | Move window to / from active scratchpad deck |
-| **`Super + T`** | Toggle window floating / tiling |
-| **`Super + -` / `Super + =`** | Horizontal window resize (100px step) |
-| **`Super + Shift + -` / `=`** | Vertical window resize (100px step) |
-| **`Super + Alt + -` / `+`** | Fine-grain window resize (25px step) |
-| **`Super + Space`** | Omarchy Spotlight App Launcher |
-| **`Super + Shift + Ctrl + A`** | Launch Google Antigravity AI CLI |
+- **Multi-Deck Scratchpads (`special:deck_*`)**: Independent floating workspaces supporting split tiling and vertical deck navigation (`Super + Up/Down`).
+- **Native Spatial Navigation (`nav-window`)**: Compiled C helper executing in under 2ms for directional window focus and scratchpad navigation.
+- **Spotlight Menu Animations**: Smooth cubic zoom and fade animation patch for the application launcher (`Super + Space`).
+- **Shell Aliases**: Command wrapper `agyd` mapped to `agy --dangerously-skip-permissions`.
+- **CachyOS Performance Configuration**: BORE CPU scheduler, TCP BBRv3 + CAKE queueing, ZRAM optimization, and PipeWire real-time priority.
+- **Programmer Keyboard Layout**: Clean US layout with direct quotes and Compose mapped to CapsLock.
 
 ---
 
-## 📦 Repository Structure
+## Keybindings
+
+| Keybinding | Action | Context |
+| :--- | :--- | :--- |
+| **`Alt + F`** | Toggle active scratchpad deck | Anywhere |
+| **`Super + Up` / `Down`** | Slide between scratchpad decks | Anywhere |
+| **`Super + Left` / `Right`** | Focus window or split tile | Anywhere |
+| **`Super + N` / `Alt + Shift + F`** | Create new scratchpad deck | Anywhere |
+| **`Super + W`** | Close focused window | Anywhere |
+| **`Super + O`** | Move window to / from scratchpad deck | Anywhere |
+| **`Super + T`** | Toggle window floating / tiling | Focused Window |
+| **`Super + -` / `Super + =`** | Horizontal window resize (100px) | Focused Window |
+| **`Super + Shift + -` / `=`** | Vertical window resize (100px) | Focused Window |
+| **`Super + Alt + -` / `+`** | Fine-grain window resize (25px) | Focused Window |
+| **`Super + Space`** | Application launcher | Anywhere |
+
+---
+
+## Repository Structure
 
 ```
 ~/dotfiles/
-├── bootstrap.sh                 # Clean restore script for configs and native helpers
+├── bootstrap.sh                 # Master setup script for configs and native helpers
 ├── AGENTS.md                    # Operational manual for AI coding agents
-├── README.md                    # Documentation & keybindings (this file)
+├── README.md                    # Documentation and keybindings
 ├── scripts/
-│   ├── setup-cachyos.sh         # Optional CachyOS kernel, sysctl, and rtkit installer
-│   └── patch-smooth-menu.sh     # Spotlight zoom & fade animation patch
+│   ├── setup-cachyos.sh         # Optional CachyOS kernel and sysctl installer
+│   └── patch-smooth-menu.sh     # Spotlight animation patch for Super+Space
 ├── config/
 │   ├── hypr/                    # Hyprland bindings, looknfeel, input, autostart
-│   ├── omarchy/                 # Omarchy shell & menu extensions
-│   ├── bash/                    # Shell aliases (agyd wrapper)
+│   ├── omarchy/                 # Omarchy shell and menu customizations
+│   ├── bash/                    # Shell aliases (agyd)
 │   ├── starship.toml            # Cross-shell prompt configuration
-│   └── git/config               # Git user identity and aliases
+│   └── git/config               # Git identity and configuration
 └── local/bin/
-    ├── nav-window               # Compiled native C 2D navigator (nav-window.c)
+    ├── nav-window               # Compiled C 2D navigator
     ├── scratchpad-deck          # Multi-deck scratchpad engine
-    ├── agyd                     # Auto-permission wrapper for Antigravity CLI
-    └── powerprofilesctl         # Native DBus wrapper for 1-click power profiles
+    ├── agyd                     # Script wrapper for agy permissions
+    └── powerprofilesctl         # DBus power profile wrapper
 ```
 
 ---
 
-## 🛠️ Quick Installation & Restore
+## Installation & Restore
 
-On a fresh Arch Linux / Omarchy install:
+On a fresh Arch Linux / Omarchy installation:
 
 ```bash
 git clone git@github.com:hangodek/dotfiles.git ~/dotfiles
@@ -69,6 +68,6 @@ git clone git@github.com:hangodek/dotfiles.git ~/dotfiles
 # Standard restore (symlinks configs, compiles native helpers, applies menu patch)
 bash ~/dotfiles/bootstrap.sh
 
-# Optional: Complete restore + CachyOS x86-64-v3 Kernel & Performance Suite
+# Optional: Complete restore with CachyOS Kernel & Performance Suite
 bash ~/dotfiles/bootstrap.sh --cachyos
 ```

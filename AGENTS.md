@@ -1,10 +1,10 @@
-# 🤖 AGENTS.md — AI Agent Guidelines & Architecture Manual
+# AGENTS.md — AI Agent Guidelines & Architecture Manual
 
-> **Purpose**: This document provides strict operational rules, architectural explanations, and navigation guides for AI coding agents (Antigravity, Claude, ChatGPT, Cursor, etc.) working on this dotfiles repository.
+> **Purpose**: This document provides operational rules, architectural explanations, and navigation guides for AI coding agents working on this dotfiles repository.
 
 ---
 
-## ⚠️ 1. Critical Operational Rules (MANDATORY)
+## 1. Critical Operational Rules (MANDATORY)
 
 1. **GIT COMMIT & PUSH POLICY**:
    - **NEVER** run `git commit` or `git push` automatically unless the user **EXPLICITLY** commands you with `"commit dan push"` or `"commit and push"`.
@@ -27,22 +27,7 @@
 
 ---
 
-## 💻 2. Target Machine & Environment
-
-| Component | Specification |
-| :--- | :--- |
-| **Hardware** | **Lenovo ThinkPad X395** |
-| **CPU / GPU** | AMD Ryzen 5 PRO 3500U with Radeon Vega 8 Mobile Graphics |
-| **RAM / Swap** | 16 GB Physical RAM + 13.6 GB ZRAM (`zstd`) |
-| **OS & WM** | Arch Linux (**Omarchy**) + **Hyprland** (Wayland) + **Quickshell** |
-| **Active Kernel** | **`linux-cachyos`** (BORE Scheduler, `-O3 -march=x86-64-v3`, ThinLTO) |
-| **Audio Stack** | PipeWire 32-bit Float + Realtek ALC257 DAC + `rtkit-daemon` (Real-Time Priority 99) |
-| **Default Browser** | **Microsoft Edge** (`microsoft-edge.desktop`) |
-| **Default Shell** | Fish / Bash with Starship Prompt |
-
----
-
-## 📂 3. Repository Architecture & Layout
+## 2. Repository Architecture & Layout
 
 ```
 ~/dotfiles/
@@ -62,7 +47,7 @@
 │   ├── omarchy/
 │   │   ├── shell.json           # Top bar layout, transparency, and widget placement
 │   │   └── extensions/
-│   │       └── omarchy-menu.jsonc # App launcher menu customizations (Antigravity option)
+│   │       └── omarchy-menu.jsonc # App launcher menu customizations
 │   ├── bash/
 │   │   └── aliases.sh           # Shell aliases (agyd -> agy --dangerously-skip-permissions)
 │   ├── starship.toml            # Fast cross-shell prompt configuration
@@ -70,32 +55,32 @@
 │       └── config               # Git user identity and aliases
 └── local/
     └── bin/
-        ├── agyd                 # Auto-permission wrapper for Google Antigravity CLI
-        ├── omarchy-agent        # Default agent dispatcher with agy floating TUI support
-        ├── omarchy-default-agent# Agent switcher supporting Antigravity (agy)
-        ├── nav-window           # Compiled C 2D workspace & scratchpad tile navigator (1.74ms)
+        ├── agyd                 # Auto-permission wrapper for Antigravity CLI
+        ├── omarchy-agent        # Default agent dispatcher
+        ├── omarchy-default-agent# Agent switcher
+        ├── nav-window           # Compiled C 2D workspace & scratchpad navigator
         ├── scratchpad-deck      # Independent multi-deck floating workspace engine
-        └── powerprofilesctl     # Native DBus wrapper for instant 1-click power profiles
+        └── powerprofilesctl     # Native DBus wrapper for 1-click power profiles
 ```
 
 ---
 
-## 🧠 4. Core Subsystems & How They Work
+## 3. Core Subsystems
 
 ### A. Independent Multi-Deck Scratchpads (`special:deck_*`)
-- **Concept**: Instead of a single toggle scratchpad, Omarchy uses dynamic virtual decks (`special:deck_1`, `special:deck_2`, `special:deck_3`, ...).
+- **Concept**: Omarchy uses dynamic virtual decks (`special:deck_1`, `special:deck_2`, `special:deck_3`, ...).
 - **Behavior**:
-  - Each deck is a completely independent floating workspace supporting dwindle split tiling.
+  - Each deck is an independent floating workspace supporting dwindle split tiling.
   - `Super + Up` / `Super + Down`: Slide smoothly between scratchpad decks.
   - `Super + Left` / `Super + Right`: Navigate between split window tiles inside the current deck.
-  - `Super + N` / `Alt + Shift + F`: Prompt the App Menu to launch a new app in a new deck.
-  - `Super + W`: Smart close. If you close the last window in Deck 3, it seamlessly focuses Deck 2 without hiding the overlay.
-  - `Alt + F`: Toggle overlay visibility on/off.
+  - `Super + N` / `Alt + Shift + F`: Prompt the App Menu to launch an app in a new deck.
+  - `Super + W`: Smart close that focuses the remaining deck when closing the last window in a deck.
+  - `Alt + F`: Toggle overlay visibility.
 - **Engine Scripts**: `~/dotfiles/local/bin/scratchpad-deck` and `~/dotfiles/local/bin/nav-window`.
 
 ---
 
-### B. CachyOS Performance & Low-Latency Network Stack
+### B. Performance & Low-Latency Network Stack
 - **BORE CPU Scheduler**: Burst-Oriented Response Enhancer guarantees that interactive UI threads and audio streams preempt background compiling without micro-stutter.
 - **TCP BBRv3 + CAKE Queueing**:
   - Module loaded via `/etc/modules-load.d/bbr.conf` (`tcp_bbr`).
@@ -106,37 +91,37 @@
     net.ipv4.tcp_fastopen = 3
     ```
 - **ZRAM Optimizations**:
-  - `vm.swappiness = 150` (Tells kernel ZRAM compression is faster than disk re-reading).
-  - `vm.page-cluster = 0` (Single-page swap-in for instant response).
+  - `vm.swappiness = 150` (ZRAM compression is faster than disk paging).
+  - `vm.page-cluster = 0` (Single-page swap-in for immediate response).
 - **Anti-Stutter Disk Writeback**:
-  - `vm.dirty_bytes = 268435456` (256MB cap prevents disk write stalling bursts).
+  - `vm.dirty_bytes = 268435456` (256MB cap).
   - `vm.dirty_background_bytes = 67108864` (64MB).
 - **Daemons**:
-  - `ananicy-cpp`: Automatically applies nice priorities to Hyprland, audio, and active games.
+  - `ananicy-cpp`: Applies nice priorities to Hyprland, audio, and active games.
   - `rtkit-daemon`: Grants Real-Time Priority 99 to PipeWire audio threads.
 
 ---
 
-### C. Keyboard Layout & Programming Quotes
+### C. Keyboard Layout
 - **Configuration File**: `~/dotfiles/config/hypr/input.lua`.
 - **Settings**:
   - `kb_layout = "us"`
-  - `kb_variant = ""` (Must stay empty! NEVER use `intl` dead keys because dead keys break double quotes `""`, single quotes `''`, and backticks ```` ```` during programming).
+  - `kb_variant = ""` (Empty: never use dead keys).
   - `kb_options = "compose:caps,shift:both_capslock_cancel"`
 
 ---
 
 ### D. Shell UI & Spotlight Menu Animations (`Super + Space`)
-- **Quickshell Engine**: `omarchy-shell` / `quickshell`.
+- **Engine**: `omarchy-shell` / `quickshell`.
 - **Patch Script**: `~/dotfiles/scripts/patch-smooth-menu.sh`.
 - **Behavior**:
-  - When `Super + Space` is pressed, the menu card smoothly zooms (`scale: 0.96 ➔ 1.00`) and fades (`opacity: 0.0 ➔ 1.0`) in **150–160 ms** with `Easing.OutCubic`.
+  - When `Super + Space` is pressed, the menu card smoothly zooms (`scale: 0.96 -> 1.00`) and fades (`opacity: 0.0 -> 1.0`) in 150 ms with `Easing.OutCubic`.
   - Closing fades and shrinks smoothly with immediate keyboard release.
-  - To apply edits to QML files, always run `omarchy restart shell`.
+  - Reload with `omarchy restart shell`.
 
 ---
 
-## 🛠️ 5. Common Maintenance Commands for AI Agents
+## 4. Common Maintenance Commands
 
 ```bash
 # Validate and reload Hyprland after editing config/hypr/
@@ -160,7 +145,7 @@ git -C ~/dotfiles status
 
 ---
 
-## 🔄 6. Clean Install / Restore Procedure
+## 5. Clean Install & Restore Procedure
 
 On a fresh Arch Linux / Omarchy install:
 
