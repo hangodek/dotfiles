@@ -1,14 +1,44 @@
 #!/usr/bin/env python3
 """
 Smart Dynamic Window Spatial Mover & Swapper for Hyprland.
-Swaps or moves the focused window spatially while strictly preserving
-each window's individual width, height, and layout proportions.
+- For TILED windows: Natively moves window within the Hyprland tiling tree.
+- For FLOATING windows: Spatially swaps screen coordinates while strictly
+  preserving each window's individual width, height, and layout proportions.
+- Fast direct Unix Domain Socket 1 IPC for 0ms visual delay.
 """
 
 import sys
 import os
 import json
-import subprocess
+import socket
+
+
+def get_hypr_sock1():
+    his = os.getenv('HYPRLAND_INSTANCE_SIGNATURE')
+    if not his:
+        return None
+    runtime_dir = os.getenv('XDG_RUNTIME_DIR', f'/run/user/{os.getuid()}')
+    path = os.path.join(runtime_dir, 'hypr', his, '.socket.sock')
+    return path if os.path.exists(path) else None
+
+
+def send_hypr_cmd(sock1_path, cmd):
+    if not sock1_path:
+        return ""
+    try:
+        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        s.connect(sock1_path)
+        s.sendall(cmd.encode('utf-8'))
+        data = b''
+        while True:
+            chunk = s.recv(8192)
+            if not chunk:
+                break
+            data += chunk
+        s.close()
+        return data.decode('utf-8', errors='ignore')
+    except Exception:
+        return ""
 
 
 def get_gap_config():
@@ -29,11 +59,21 @@ def main():
         sys.exit(0)
 
     dir_arg = sys.argv[1].lower()
+    d_map = {'left': 'l', 'right': 'r', 'up': 'u', 'down': 'd', 'l': 'l', 'r': 'r', 'u': 'u', 'd': 'd'}
+    hl_dir = d_map.get(dir_arg, 'r')
+
+    sock1_path = get_hypr_sock1()
+    if not sock1_path:
+        sys.exit(0)
 
     try:
-        active = json.loads(subprocess.check_output(['hyprctl', 'activewindow', '-j'], text=True))
-        clients = json.loads(subprocess.check_output(['hyprctl', 'clients', '-j'], text=True))
-        monitors = json.loads(subprocess.check_output(['hyprctl', 'monitors', '-j'], text=True))
+        active_raw = send_hypr_cmd(sock1_path, 'j/activewindow')
+        clients_raw = send_hypr_cmd(sock1_path, 'j/clients')
+        monitors_raw = send_hypr_cmd(sock1_path, 'j/monitors')
+
+        active = json.loads(active_raw) if active_raw else {}
+        clients = json.loads(clients_raw) if clients_raw else []
+        monitors = json.loads(monitors_raw) if monitors_raw else []
     except Exception:
         sys.exit(0)
 
@@ -45,22 +85,21 @@ def main():
     ws_id = ws.get('id')
     ws_name = str(ws.get('name', ''))
 
-    # Inside Scratchpad Decks: fallback to standard Hyprland deck swap
-    if "special:" in ws_name:
-        d_map = {'left': 'l', 'right': 'r', 'up': 'u', 'down': 'd', 'l': 'l', 'r': 'r', 'u': 'u', 'd': 'd'}
-        hl_dir = d_map.get(dir_arg, 'r')
-        subprocess.run(['hyprctl', 'dispatch', f'hl.dsp.window.swap({{ direction = "{hl_dir}" }})'], check=False)
+    # 1. TILED WINDOWS or SCRATCHPAD DECKS:
+    # Use native Hyprland layout tree mover/swapper
+    if active.get('floating') is not True or "special:" in ws_name:
+        send_hypr_cmd(sock1_path, f'dispatch hl.dsp.window.move {{ direction = "{hl_dir}" }}')
         sys.exit(0)
 
-    # Filter windows on this workspace
-    ws_clients = [c for c in clients if (c.get('workspace', {}).get('id') == ws_id or str(c.get('workspace', {}).get('name')) == ws_name) and not c.get('hidden') and c.get('mapped')]
+    # 2. FLOATING TACTILE WINDOWS: Spatial coordinate swap preserving sizes
+    ws_clients = [c for c in clients if (c.get('workspace', {}).get('id') == ws_id or str(c.get('workspace', {}).get('name')) == ws_name) and not c.get('hidden') and c.get('mapped') and c.get('floating') is True]
 
     inner, outer, top_bar = get_gap_config()
     cur_x, cur_y = active.get('at', [0, 0])
     cur_w, cur_h = active.get('size', [0, 0])
 
     if len(ws_clients) <= 1:
-        # Only 1 window: move it within the screen margins without resizing
+        # Sole floating window: slide within monitor borders
         focused_mon = next((m for m in monitors if m.get('focused')), monitors[0] if monitors else None)
         if not focused_mon:
             sys.exit(0)
@@ -72,19 +111,19 @@ def main():
 
         if dir_arg in ['right', 'r']:
             new_x = mon_x + mon_w - outer - cur_w
-            subprocess.run(['hyprctl', 'dispatch', f'hl.dsp.window.move({{ x = {new_x}, y = {cur_y} }})'], check=False)
+            send_hypr_cmd(sock1_path, f'dispatch hl.dsp.window.move {{ x = {new_x}, y = {cur_y} }}')
         elif dir_arg in ['left', 'l']:
             new_x = mon_x + outer
-            subprocess.run(['hyprctl', 'dispatch', f'hl.dsp.window.move({{ x = {new_x}, y = {cur_y} }})'], check=False)
+            send_hypr_cmd(sock1_path, f'dispatch hl.dsp.window.move {{ x = {new_x}, y = {cur_y} }}')
         elif dir_arg in ['down', 'd']:
             new_y = mon_y + mon_h - outer - cur_h
-            subprocess.run(['hyprctl', 'dispatch', f'hl.dsp.window.move({{ x = {cur_x}, y = {new_y} }})'], check=False)
+            send_hypr_cmd(sock1_path, f'dispatch hl.dsp.window.move {{ x = {cur_x}, y = {new_y} }}')
         elif dir_arg in ['up', 'u']:
             new_y = mon_y + top_bar + outer
-            subprocess.run(['hyprctl', 'dispatch', f'hl.dsp.window.move({{ x = {cur_x}, y = {new_y} }})'], check=False)
+            send_hypr_cmd(sock1_path, f'dispatch hl.dsp.window.move {{ x = {cur_x}, y = {new_y} }}')
         sys.exit(0)
 
-    # Multi-window on workspace: Find adjacent neighbor in requested direction
+    # Multi-floating on workspace: Find adjacent neighbor in requested direction
     neighbor = None
     min_dist = float('inf')
 
@@ -116,10 +155,21 @@ def main():
                 neighbor = c
 
     if not neighbor:
-        # Fallback to standard Hyprland swap
-        d_map = {'left': 'l', 'right': 'r', 'up': 'u', 'down': 'd', 'l': 'l', 'r': 'r', 'u': 'u', 'd': 'd'}
-        hl_dir = d_map.get(dir_arg, 'r')
-        subprocess.run(['hyprctl', 'dispatch', f'hl.dsp.window.swap({{ direction = "{hl_dir}" }})'], check=False)
+        # Fallback to sliding to screen edge
+        focused_mon = next((m for m in monitors if m.get('focused')), monitors[0] if monitors else None)
+        if not focused_mon:
+            sys.exit(0)
+        mon_w = int(focused_mon.get('width', 1920) / focused_mon.get('scale', 1.0))
+        mon_h = int(focused_mon.get('height', 1080) / focused_mon.get('scale', 1.0))
+        mon_x = focused_mon.get('x', 0)
+        mon_y = focused_mon.get('y', 0)
+
+        if dir_arg in ['right', 'r']:
+            new_x = mon_x + mon_w - outer - cur_w
+            send_hypr_cmd(sock1_path, f'dispatch hl.dsp.window.move {{ x = {new_x}, y = {cur_y} }}')
+        elif dir_arg in ['left', 'l']:
+            new_x = mon_x + outer
+            send_hypr_cmd(sock1_path, f'dispatch hl.dsp.window.move {{ x = {new_x}, y = {cur_y} }}')
         sys.exit(0)
 
     n_addr = neighbor.get('address')
@@ -129,46 +179,26 @@ def main():
     if dir_arg in ['right', 'r']:
         new_nx = cur_x
         new_cur_x = new_nx + nw + inner
-        script = f'''
-hyprctl dispatch "hl.dsp.focus({{ window = 'address:{n_addr}' }})"
-hyprctl dispatch "hl.dsp.window.move({{ x = {new_nx}, y = {ny} }})"
-hyprctl dispatch "hl.dsp.focus({{ window = 'address:{focused_addr}' }})"
-hyprctl dispatch "hl.dsp.window.move({{ x = {new_cur_x}, y = {cur_y} }})"
-'''
-        subprocess.run(['bash', '-c', script], check=False)
+        batch_cmd = f'[[BATCH]]dispatch hl.dsp.focus {{ window = "address:{n_addr}" }} ; dispatch hl.dsp.window.move {{ x = {new_nx}, y = {ny} }} ; dispatch hl.dsp.focus {{ window = "address:{focused_addr}" }} ; dispatch hl.dsp.window.move {{ x = {new_cur_x}, y = {cur_y} }}'
+        send_hypr_cmd(sock1_path, batch_cmd)
 
     elif dir_arg in ['left', 'l']:
         new_cur_x = nx
         new_nx = new_cur_x + cur_w + inner
-        script = f'''
-hyprctl dispatch "hl.dsp.focus({{ window = 'address:{n_addr}' }})"
-hyprctl dispatch "hl.dsp.window.move({{ x = {new_nx}, y = {ny} }})"
-hyprctl dispatch "hl.dsp.focus({{ window = 'address:{focused_addr}' }})"
-hyprctl dispatch "hl.dsp.window.move({{ x = {new_cur_x}, y = {cur_y} }})"
-'''
-        subprocess.run(['bash', '-c', script], check=False)
+        batch_cmd = f'[[BATCH]]dispatch hl.dsp.focus {{ window = "address:{n_addr}" }} ; dispatch hl.dsp.window.move {{ x = {new_nx}, y = {ny} }} ; dispatch hl.dsp.focus {{ window = "address:{focused_addr}" }} ; dispatch hl.dsp.window.move {{ x = {new_cur_x}, y = {cur_y} }}'
+        send_hypr_cmd(sock1_path, batch_cmd)
 
     elif dir_arg in ['down', 'd']:
         new_ny = cur_y
         new_cur_y = new_ny + nh + inner
-        script = f'''
-hyprctl dispatch "hl.dsp.focus({{ window = 'address:{n_addr}' }})"
-hyprctl dispatch "hl.dsp.window.move({{ x = {nx}, y = {new_ny} }})"
-hyprctl dispatch "hl.dsp.focus({{ window = 'address:{focused_addr}' }})"
-hyprctl dispatch "hl.dsp.window.move({{ x = {cur_x}, y = {new_cur_y} }})"
-'''
-        subprocess.run(['bash', '-c', script], check=False)
+        batch_cmd = f'[[BATCH]]dispatch hl.dsp.focus {{ window = "address:{n_addr}" }} ; dispatch hl.dsp.window.move {{ x = {nx}, y = {new_ny} }} ; dispatch hl.dsp.focus {{ window = "address:{focused_addr}" }} ; dispatch hl.dsp.window.move {{ x = {cur_x}, y = {new_cur_y} }}'
+        send_hypr_cmd(sock1_path, batch_cmd)
 
     elif dir_arg in ['up', 'u']:
         new_cur_y = ny
         new_ny = new_cur_y + cur_h + inner
-        script = f'''
-hyprctl dispatch "hl.dsp.focus({{ window = 'address:{n_addr}' }})"
-hyprctl dispatch "hl.dsp.window.move({{ x = {nx}, y = {new_ny} }})"
-hyprctl dispatch "hl.dsp.focus({{ window = 'address:{focused_addr}' }})"
-hyprctl dispatch "hl.dsp.window.move({{ x = {cur_x}, y = {new_cur_y} }})"
-'''
-        subprocess.run(['bash', '-c', script], check=False)
+        batch_cmd = f'[[BATCH]]dispatch hl.dsp.focus {{ window = "address:{n_addr}" }} ; dispatch hl.dsp.window.move {{ x = {nx}, y = {new_ny} }} ; dispatch hl.dsp.focus {{ window = "address:{focused_addr}" }} ; dispatch hl.dsp.window.move {{ x = {cur_x}, y = {new_cur_y} }}'
+        send_hypr_cmd(sock1_path, batch_cmd)
 
 
 if __name__ == '__main__':
