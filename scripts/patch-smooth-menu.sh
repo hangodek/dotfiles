@@ -8,14 +8,25 @@ MENU_FILE="/usr/share/omarchy/shell/plugins/menu/Menu.qml"
 
 if [[ ! -f "$MENU_FILE" ]]; then
   echo "Omarchy Menu.qml not found at $MENU_FILE"
-  exit 1
+  exit 0
 fi
 
-echo "==> Applying Spotlight-style smooth zoom & fade animation to Menu.qml..."
+echo "--> Checking Spotlight-style smooth zoom & fade animation for Menu.qml..."
 
 python3 -c "
-with open('$MENU_FILE', 'r') as f:
+import sys, os
+
+menu_path = '$MENU_FILE'
+with open(menu_path, 'r') as f:
     content = f.read()
+
+if 'Easing.OutCubic' in content and 'scale: root.opened' in content:
+    print('    Spotlight zoom & fade animation already active.')
+    sys.exit(0)
+
+if not os.access(menu_path, os.W_OK):
+    print('    Notice: Root permissions needed to patch /usr/share/omarchy/ (run with sudo to apply).')
+    sys.exit(0)
 
 # 1. Update PanelWindow visibility & focus
 target1 = '''  PanelWindow {
@@ -101,15 +112,21 @@ repl3 = '''    BorderSurface {
 
       MouseArea { anchors.fill: parent; onClicked: {} }'''
 
+modified = False
 if target1 in content:
     content = content.replace(target1, repl1)
+    modified = True
 if target2 in content:
     content = content.replace(target2, repl2)
+    modified = True
 if target3 in content:
     content = content.replace(target3, repl3)
+    modified = True
 
-with open('$MENU_FILE', 'w') as f:
-    f.write(content)
+if modified:
+    with open(menu_path, 'w') as f:
+        f.write(content)
+    print('    Spotlight animation patch applied successfully.')
+else:
+    print('    Spotlight animation already up to date.')
 "
-
-echo "==> Done! Animation patch applied to Menu.qml."

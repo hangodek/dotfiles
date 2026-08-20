@@ -19,7 +19,7 @@ for arg in "$@"; do
 done
 
 echo "===================================================="
-echo "🚀 Bootstrapping Han's Dotfiles for Omarchy"
+echo "Bootstrapping Han's Dotfiles for Omarchy"
 echo "===================================================="
 
 echo "--> Linking Hyprland configs..."
@@ -105,5 +105,5 @@ if (( CACHYOS_MODE )); then
 fi
 
 echo "===================================================="
-echo "✨ Dotfiles restore complete!"
+echo "Dotfiles restore complete."
 echo "===================================================="
