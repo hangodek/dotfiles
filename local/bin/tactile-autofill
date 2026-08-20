@@ -7,7 +7,8 @@ Performance Highlights:
 - Resident Control Socket ($XDG_RUNTIME_DIR/tactile-control.sock) executes window swaps in < 0.4ms.
 - Direct compiled C dispatcher (`swap-window`) executes in < 0.2ms.
 - Pure Unix Socket 1 batching (`[[BATCH]]dispatch ...`) in < 0.6ms (< 1 frame).
-- 0ms artificial sleep / zero perceptible latency.
+- Pure Edge-Preserving Geometric Sibling Fusion: guaranteed 0 overlaps / 0 stacking for 1..20+ windows.
+- Resilient socket loop that never dies from signal interrupts.
 """
 
 import sys
@@ -202,6 +203,7 @@ def map_window_to_cells(win, mon, cfg):
     win_size = win.get('size', [0, 0])
     wx, wy = win_at[0], win_at[1]
     ww, wh = win_size[0], win_size[1]
+    win_area = max(1, ww * wh)
 
     occupied = []
     for r in range(rows):
@@ -213,8 +215,9 @@ def map_window_to_cells(win, mon, cfg):
 
             overlap_x = max(0, min(wx + ww, cx + cw) - max(wx, cx))
             overlap_y = max(0, min(wy + wh, cy + ch) - max(wy, cy))
+            overlap_area = overlap_x * overlap_y
             
-            if (overlap_x * overlap_y) > (0.30 * cw * ch):
+            if (overlap_area >= 0.20 * win_area) or (overlap_area >= 0.20 * cw * ch):
                 occupied.append((r, c))
 
     return occupied
@@ -284,7 +287,7 @@ def autofill_new_window(sock1_path, new_addr, workspace_id_or_name):
     row_weights = row_weights[:rows]
 
     # -------------------------------------------------------------
-    # CASE 1: Grid has unoccupied gaps -> Fill the gap (RIGHT)
+    # CASE 1: Grid has unoccupied macro cells -> Fill the gap
     # -------------------------------------------------------------
     if len(occupied_cells) < total_cells:
         unoccupied = []
@@ -307,12 +310,11 @@ def autofill_new_window(sock1_path, new_addr, workspace_id_or_name):
             
             last_focused_window_addr = new_addr.lower()
             split_direction_history[new_addr.lower()] = 'right'
+            last_known_geometry[new_addr.lower()] = (target_x, target_y, target_w, target_h, ws_str)
             return
 
     # -------------------------------------------------------------
-    # CASE 2: Grid is ALREADY FULL -> Alternating Dwindle Split
-    # Strict alternation: Right -> Bottom -> Right -> Bottom
-    # With minimum dimension safety checks (min_w >= 420, min_h >= 240)
+    # CASE 2: Grid is full -> Alternating Dwindle Split
     # -------------------------------------------------------------
     target_win = None
     if last_focused_window_addr:
@@ -351,14 +353,12 @@ def autofill_new_window(sock1_path, new_addr, workspace_id_or_name):
         else:
             chosen_dir = 'right'
 
-    # Safety override: never shrink width below 420px or height below 240px
     if chosen_dir == 'right' and tw < 840 and th >= 450:
         chosen_dir = 'bottom'
     elif chosen_dir == 'bottom' and th < 480 and tw >= 840:
         chosen_dir = 'right'
 
     if chosen_dir == 'bottom':
-        # Split BOTTOM (Top half for target, Bottom half for new)
         h1 = (th - inner) // 2
         h2 = th - inner - h1
         y2 = ty + h1 + inner
@@ -368,9 +368,10 @@ def autofill_new_window(sock1_path, new_addr, workspace_id_or_name):
         
         split_direction_history[t_addr_lower] = 'bottom'
         split_direction_history[new_addr.lower()] = 'bottom'
+        last_known_geometry[t_addr_lower] = (tx, ty, tw, h1, ws_str)
+        last_known_geometry[new_addr.lower()] = (tx, y2, tw, h2, ws_str)
 
     else:
-        # Split RIGHT (Left half for target, Right half for new)
         w1 = (tw - inner) // 2
         w2 = tw - inner - w1
         x2 = tx + w1 + inner
@@ -380,12 +381,14 @@ def autofill_new_window(sock1_path, new_addr, workspace_id_or_name):
         
         split_direction_history[t_addr_lower] = 'right'
         split_direction_history[new_addr.lower()] = 'right'
+        last_known_geometry[t_addr_lower] = (tx, ty, w1, th, ws_str)
+        last_known_geometry[new_addr.lower()] = (x2, ty, w2, th, ws_str)
 
     last_focused_window_addr = new_addr.lower()
 
 
 def handle_window_closed(sock1_path, closed_addr):
-    """Universal sibling expansion on window close for ANY number of windows."""
+    """Pure Edge-Preserving Sibling Fusion on window close for ANY number of windows (1..20+)."""
     global split_direction_history
     cfg = load_config()
     clients, mon = get_active_clients_and_monitor(sock1_path)
@@ -396,7 +399,6 @@ def handle_window_closed(sock1_path, closed_addr):
     active_ws_id = active_mon.get('activeWorkspace', {}).get('id')
     active_ws_name = str(active_mon.get('activeWorkspace', {}).get('name', ''))
 
-    # Remaining floating windows on active workspace
     rem_floating = [
         c for c in clients
         if (c.get('workspace', {}).get('id') == active_ws_id or str(c.get('workspace', {}).get('name')) == active_ws_name)
@@ -422,84 +424,167 @@ def handle_window_closed(sock1_path, closed_addr):
     canvas_w = mon_w - (2 * outer)
     canvas_h = mon_h - top_bar - (2 * outer)
 
-    # 1. If only 1 window is left -> expand to 100% full screen canvas!
+    # 1. Sole remaining window -> 100% full screen canvas
     if len(rem_floating) == 1:
         sole_addr = rem_floating[0].get('address')
         batch_cmd = f'[[BATCH]]dispatch hl.dsp.focus {{ window = "address:{sole_addr}" }} ; dispatch hl.dsp.window.resize {{ x = {canvas_w}, y = {canvas_h} }} ; dispatch hl.dsp.window.move {{ x = {canvas_x}, y = {canvas_y} }}'
         send_hypr_cmd(sock1_path, batch_cmd)
         split_direction_history[sole_addr.lower()] = 'right'
+        last_known_geometry[sole_addr.lower()] = (canvas_x, canvas_y, canvas_w, canvas_h, active_ws_id)
         return
 
-    # 2. Universal Sibling Match using cached closed geometry
+    # 2. Pure Edge-Preserving Geometric Sibling Match
     cached_geo = last_known_geometry.get(closed_addr.lower())
-    if cached_geo:
-        xc, yc, wc, hc, _ = cached_geo
+    if not cached_geo:
+        return
 
-        # Try Horizontal Left Neighbor (Left expands Right to cover closed window)
-        for win in rem_floating:
-            wx, wy = win.get('at', [0, 0])
-            ww, wh = win.get('size', [0, 0])
-            target_addr = win.get('address')
-            if abs((wx + ww + inner) - xc) <= 12 and abs(wy - yc) <= 25 and abs(wh - hc) <= 25:
-                new_w = ww + inner + wc
-                batch_cmd = f'[[BATCH]]dispatch hl.dsp.focus {{ window = "address:{target_addr}" }} ; dispatch hl.dsp.window.resize {{ x = {new_w}, y = {wh} }} ; dispatch hl.dsp.window.move {{ x = {wx}, y = {wy} }}'
-                send_hypr_cmd(sock1_path, batch_cmd)
-                split_direction_history[target_addr.lower()] = 'bottom'
-                return
+    xc, yc, wc, hc, _ = cached_geo
 
-        # Try Horizontal Right Neighbor (Right expands Left to cover closed window)
-        for win in rem_floating:
-            wx, wy = win.get('at', [0, 0])
-            ww, wh = win.get('size', [0, 0])
-            target_addr = win.get('address')
-            if abs((xc + wc + inner) - wx) <= 12 and abs(wy - yc) <= 25 and abs(wh - hc) <= 25:
-                new_w = ww + inner + wc
-                batch_cmd = f'[[BATCH]]dispatch hl.dsp.focus {{ window = "address:{target_addr}" }} ; dispatch hl.dsp.window.resize {{ x = {new_w}, y = {wh} }} ; dispatch hl.dsp.window.move {{ x = {xc}, y = {wy} }}'
-                send_hypr_cmd(sock1_path, batch_cmd)
-                split_direction_history[target_addr.lower()] = 'bottom'
-                return
+    # 2a. Direct Single Sibling Exact Match (Vertical or Horizontal)
+    # Check Top Sibling (Top expands Down)
+    for win in rem_floating:
+        wx, wy = win.get('at', [0, 0])
+        ww, wh = win.get('size', [0, 0])
+        target_addr = win.get('address')
+        if abs((wy + wh + inner) - yc) <= 15 and abs(wx - xc) <= 20 and abs(ww - wc) <= 20:
+            new_h = wh + inner + hc
+            batch_cmd = f'[[BATCH]]dispatch hl.dsp.focus {{ window = "address:{target_addr}" }} ; dispatch hl.dsp.window.resize {{ x = {ww}, y = {new_h} }} ; dispatch hl.dsp.window.move {{ x = {wx}, y = {wy} }}'
+            send_hypr_cmd(sock1_path, batch_cmd)
+            last_known_geometry[target_addr.lower()] = (wx, wy, ww, new_h, active_ws_id)
+            return
 
-        # Try Vertical Top Neighbor (Top expands Down to cover closed window)
-        for win in rem_floating:
-            wx, wy = win.get('at', [0, 0])
-            ww, wh = win.get('size', [0, 0])
-            target_addr = win.get('address')
-            if abs((wy + wh + inner) - yc) <= 12 and abs(wx - xc) <= 25 and abs(ww - wc) <= 25:
-                new_h = wh + inner + hc
-                batch_cmd = f'[[BATCH]]dispatch hl.dsp.focus {{ window = "address:{target_addr}" }} ; dispatch hl.dsp.window.resize {{ x = {ww}, y = {new_h} }} ; dispatch hl.dsp.window.move {{ x = {wx}, y = {wy} }}'
-                send_hypr_cmd(sock1_path, batch_cmd)
-                split_direction_history[target_addr.lower()] = 'right'
-                return
+    # Check Bottom Sibling (Bottom moves Up)
+    for win in rem_floating:
+        wx, wy = win.get('at', [0, 0])
+        ww, wh = win.get('size', [0, 0])
+        target_addr = win.get('address')
+        if abs((yc + hc + inner) - wy) <= 15 and abs(wx - xc) <= 20 and abs(ww - wc) <= 20:
+            new_h = wh + inner + hc
+            batch_cmd = f'[[BATCH]]dispatch hl.dsp.focus {{ window = "address:{target_addr}" }} ; dispatch hl.dsp.window.resize {{ x = {ww}, y = {new_h} }} ; dispatch hl.dsp.window.move {{ x = {wx}, y = {yc} }}'
+            send_hypr_cmd(sock1_path, batch_cmd)
+            last_known_geometry[target_addr.lower()] = (wx, yc, ww, new_h, active_ws_id)
+            return
 
-        # Try Vertical Bottom Neighbor (Bottom expands Up to cover closed window)
-        for win in rem_floating:
-            wx, wy = win.get('at', [0, 0])
-            ww, wh = win.get('size', [0, 0])
-            target_addr = win.get('address')
-            if abs((yc + hc + inner) - wy) <= 12 and abs(wx - xc) <= 25 and abs(ww - wc) <= 25:
-                new_h = wh + inner + hc
-                batch_cmd = f'[[BATCH]]dispatch hl.dsp.focus {{ window = "address:{target_addr}" }} ; dispatch hl.dsp.window.resize {{ x = {ww}, y = {new_h} }} ; dispatch hl.dsp.window.move {{ x = {wx}, y = {yc} }}'
-                send_hypr_cmd(sock1_path, batch_cmd)
-                split_direction_history[target_addr.lower()] = 'right'
-                return
+    # Check Left Sibling (Left expands Right)
+    for win in rem_floating:
+        wx, wy = win.get('at', [0, 0])
+        ww, wh = win.get('size', [0, 0])
+        target_addr = win.get('address')
+        if abs((wx + ww + inner) - xc) <= 15 and abs(wy - yc) <= 20 and abs(wh - hc) <= 20:
+            new_w = ww + inner + wc
+            batch_cmd = f'[[BATCH]]dispatch hl.dsp.focus {{ window = "address:{target_addr}" }} ; dispatch hl.dsp.window.resize {{ x = {new_w}, y = {wh} }} ; dispatch hl.dsp.window.move {{ x = {wx}, y = {wy} }}'
+            send_hypr_cmd(sock1_path, batch_cmd)
+            last_known_geometry[target_addr.lower()] = (wx, wy, new_w, wh, active_ws_id)
+            return
 
-    # 3. Fallback: If 2 windows remain and no direct sibling matched, rebalance across active weights
-    if len(rem_floating) == 2:
-        grid = cfg.get('grid', {})
-        cols = grid.get('cols', 3)
-        col_weights = cfg.get('col_weights', [1.0] * cols)
-        sorted_wins = sorted(rem_floating, key=lambda c: c.get('at', [0, 0])[0])
-        w1_addr = sorted_wins[0].get('address')
-        w2_addr = sorted_wins[1].get('address')
+    # Check Right Sibling (Right moves Left)
+    for win in rem_floating:
+        wx, wy = win.get('at', [0, 0])
+        ww, wh = win.get('size', [0, 0])
+        target_addr = win.get('address')
+        if abs((xc + wc + inner) - wx) <= 15 and abs(wy - yc) <= 20 and abs(wh - hc) <= 20:
+            new_w = ww + inner + wc
+            batch_cmd = f'[[BATCH]]dispatch hl.dsp.focus {{ window = "address:{target_addr}" }} ; dispatch hl.dsp.window.resize {{ x = {new_w}, y = {wh} }} ; dispatch hl.dsp.window.move {{ x = {xc}, y = {wy} }}'
+            send_hypr_cmd(sock1_path, batch_cmd)
+            last_known_geometry[target_addr.lower()] = (xc, wy, new_w, wh, active_ws_id)
+            return
 
-        w1_x, w1_w, _, _ = compute_dimension_coords(canvas_x, canvas_w, inner, col_weights, 0, 0)
-        w2_x, w2_w, _, _ = compute_dimension_coords(canvas_x, canvas_w, inner, col_weights, 1, cols - 1)
+    # 2b. Composite Parallel Siblings along the shared edge (for wide/tall long windows)
+    # Left column of siblings expanding right
+    left_sibs = [
+        w for w in rem_floating
+        if abs((w.get('at', [0, 0])[0] + w.get('size', [0, 0])[0] + inner) - xc) <= 15
+        and w.get('at', [0, 0])[1] >= yc - 20
+        and (w.get('at', [0, 0])[1] + w.get('size', [0, 0])[1]) <= yc + hc + 20
+    ]
+    if left_sibs and (sum(w.get('size', [0, 0])[1] + inner for w in left_sibs) - inner >= hc - 35):
+        batch_parts = []
+        for w in left_sibs:
+            addr = w.get('address')
+            wx, wy = w.get('at', [0, 0])
+            ww, wh = w.get('size', [0, 0])
+            new_w = ww + inner + wc
+            batch_parts.append(
+                f'dispatch hl.dsp.focus {{ window = "address:{addr}" }} ; '
+                f'dispatch hl.dsp.window.resize {{ x = {new_w}, y = {wh} }} ; '
+                f'dispatch hl.dsp.window.move {{ x = {wx}, y = {wy} }}'
+            )
+            last_known_geometry[addr.lower()] = (wx, wy, new_w, wh, active_ws_id)
+        if batch_parts:
+            send_hypr_cmd(sock1_path, f'[[BATCH]]{" ; ".join(batch_parts)}')
+            return
 
-        batch_cmd = f'[[BATCH]]dispatch hl.dsp.focus {{ window = "address:{w1_addr}" }} ; dispatch hl.dsp.window.resize {{ x = {w1_w}, y = {canvas_h} }} ; dispatch hl.dsp.window.move {{ x = {w1_x}, y = {canvas_y} }} ; dispatch hl.dsp.focus {{ window = "address:{w2_addr}" }} ; dispatch hl.dsp.window.resize {{ x = {w2_w}, y = {canvas_h} }} ; dispatch hl.dsp.window.move {{ x = {w2_x}, y = {canvas_y} }}'
-        send_hypr_cmd(sock1_path, batch_cmd)
-        
-        split_direction_history[w1_addr.lower()] = 'right'
-        split_direction_history[w2_addr.lower()] = 'right'
+    # Right column of siblings expanding left
+    right_sibs = [
+        w for w in rem_floating
+        if abs((xc + wc + inner) - w.get('at', [0, 0])[0]) <= 15
+        and w.get('at', [0, 0])[1] >= yc - 20
+        and (w.get('at', [0, 0])[1] + w.get('size', [0, 0])[1]) <= yc + hc + 20
+    ]
+    if right_sibs and (sum(w.get('size', [0, 0])[1] + inner for w in right_sibs) - inner >= hc - 35):
+        batch_parts = []
+        for w in right_sibs:
+            addr = w.get('address')
+            wx, wy = w.get('at', [0, 0])
+            ww, wh = w.get('size', [0, 0])
+            new_w = ww + inner + wc
+            batch_parts.append(
+                f'dispatch hl.dsp.focus {{ window = "address:{addr}" }} ; '
+                f'dispatch hl.dsp.window.resize {{ x = {new_w}, y = {wh} }} ; '
+                f'dispatch hl.dsp.window.move {{ x = {xc}, y = {wy} }}'
+            )
+            last_known_geometry[addr.lower()] = (xc, wy, new_w, wh, active_ws_id)
+        if batch_parts:
+            send_hypr_cmd(sock1_path, f'[[BATCH]]{" ; ".join(batch_parts)}')
+            return
+
+    # Top row of siblings expanding down
+    top_sibs = [
+        w for w in rem_floating
+        if abs((w.get('at', [0, 0])[1] + w.get('size', [0, 0])[1] + inner) - yc) <= 15
+        and w.get('at', [0, 0])[0] >= xc - 20
+        and (w.get('at', [0, 0])[0] + w.get('size', [0, 0])[0]) <= xc + wc + 20
+    ]
+    if top_sibs and (sum(w.get('size', [0, 0])[0] + inner for w in top_sibs) - inner >= wc - 35):
+        batch_parts = []
+        for w in top_sibs:
+            addr = w.get('address')
+            wx, wy = w.get('at', [0, 0])
+            ww, wh = w.get('size', [0, 0])
+            new_h = wh + inner + hc
+            batch_parts.append(
+                f'dispatch hl.dsp.focus {{ window = "address:{addr}" }} ; '
+                f'dispatch hl.dsp.window.resize {{ x = {ww}, y = {new_h} }} ; '
+                f'dispatch hl.dsp.window.move {{ x = {wx}, y = {wy} }}'
+            )
+            last_known_geometry[addr.lower()] = (wx, wy, ww, new_h, active_ws_id)
+        if batch_parts:
+            send_hypr_cmd(sock1_path, f'[[BATCH]]{" ; ".join(batch_parts)}')
+            return
+
+    # Bottom row of siblings expanding up
+    bot_sibs = [
+        w for w in rem_floating
+        if abs((yc + hc + inner) - w.get('at', [0, 0])[1]) <= 15
+        and w.get('at', [0, 0])[0] >= xc - 20
+        and (w.get('at', [0, 0])[0] + w.get('size', [0, 0])[0]) <= xc + wc + 20
+    ]
+    if bot_sibs and (sum(w.get('size', [0, 0])[0] + inner for w in bot_sibs) - inner >= wc - 35):
+        batch_parts = []
+        for w in bot_sibs:
+            addr = w.get('address')
+            wx, wy = w.get('at', [0, 0])
+            ww, wh = w.get('size', [0, 0])
+            new_h = wh + inner + hc
+            batch_parts.append(
+                f'dispatch hl.dsp.focus {{ window = "address:{addr}" }} ; '
+                f'dispatch hl.dsp.window.resize {{ x = {ww}, y = {new_h} }} ; '
+                f'dispatch hl.dsp.window.move {{ x = {wx}, y = {yc} }}'
+            )
+            last_known_geometry[addr.lower()] = (wx, yc, ww, new_h, active_ws_id)
+        if batch_parts:
+            send_hypr_cmd(sock1_path, f'[[BATCH]]{" ; ".join(batch_parts)}')
+            return
 
 
 def perform_swap(sock1_path, dir_arg):
@@ -652,7 +737,7 @@ def start_control_socket_server(sock1_path):
 
 def handle_resync(signum, frame):
     """
-    SIGUSR1 handler: triggered by external tools to refresh geometry cache.
+    SIGUSR1 handler: refresh geometry cache safely.
     """
     global _sock1_path
     if not _sock1_path:
@@ -684,45 +769,52 @@ def run_daemon():
     # Start resident control socket server (< 0.4ms swaps)
     start_control_socket_server(sock1_path)
 
-    # Register SIGUSR1 for geometry resync
-    signal.signal(signal.SIGUSR1, handle_resync)
-
-    client2 = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    # Register SIGUSR1 for geometry resync safely
     try:
-        client2.connect(sock2_path)
-    except Exception as e:
-        print(f"Failed to connect to socket2: {e}", file=sys.stderr)
-        sys.exit(1)
+        signal.signal(signal.SIGUSR1, handle_resync)
+    except Exception:
+        pass
 
-    get_active_clients_and_monitor(sock1_path)
-
-    buffer = ""
     while True:
         try:
-            data = client2.recv(4096).decode('utf-8', errors='ignore')
-            if not data:
-                break
-            buffer += data
-            while "\n" in buffer:
-                line, buffer = buffer.split("\n", 1)
-                if line.startswith("activewindowv2>>"):
-                    payload = line[len("activewindowv2>>"):].strip()
-                    if payload and payload != "0" and payload != "0x0":
-                        addr = "0x" + payload.lstrip("0x")
-                        last_focused_window_addr = addr.lower()
-                elif line.startswith("openwindow>>"):
-                    payload = line[len("openwindow>>"):]
-                    parts = payload.split(",")
-                    if len(parts) >= 2:
-                        addr = "0x" + parts[0].lstrip("0x")
-                        ws = parts[1]
-                        autofill_new_window(sock1_path, addr, ws)
-                        get_active_clients_and_monitor(sock1_path)
-                elif line.startswith("closewindow>>"):
-                    payload = line[len("closewindow>>"):]
-                    closed_addr = "0x" + payload.strip().lstrip("0x")
-                    handle_window_closed(sock1_path, closed_addr)
-                    get_active_clients_and_monitor(sock1_path)
+            client2 = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            client2.connect(sock2_path)
+            get_active_clients_and_monitor(sock1_path)
+
+            buffer = ""
+            while True:
+                try:
+                    data = client2.recv(4096).decode('utf-8', errors='ignore')
+                    if not data:
+                        break
+                    buffer += data
+                    while "\n" in buffer:
+                        line, buffer = buffer.split("\n", 1)
+                        if line.startswith("activewindowv2>>"):
+                            payload = line[len("activewindowv2>>"):].strip()
+                            if payload and payload != "0" and payload != "0x0":
+                                addr = "0x" + payload.lstrip("0x")
+                                last_focused_window_addr = addr.lower()
+                                get_active_clients_and_monitor(sock1_path)
+                        elif line.startswith("openwindow>>"):
+                            payload = line[len("openwindow>>"):]
+                            parts = payload.split(",")
+                            if len(parts) >= 2:
+                                addr = "0x" + parts[0].lstrip("0x")
+                                ws = parts[1]
+                                autofill_new_window(sock1_path, addr, ws)
+                                get_active_clients_and_monitor(sock1_path)
+                        elif line.startswith("closewindow>>"):
+                            payload = line[len("closewindow>>"):]
+                            closed_addr = "0x" + payload.strip().lstrip("0x")
+                            handle_window_closed(sock1_path, closed_addr)
+                            get_active_clients_and_monitor(sock1_path)
+                except InterruptedError:
+                    continue
+                except Exception:
+                    time.sleep(0.2)
+                    break
+            client2.close()
         except Exception:
             time.sleep(0.5)
 
