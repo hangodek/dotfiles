@@ -15,21 +15,16 @@ Personal dotfiles, native helper utilities, and system optimizations for Arch Li
 
 ---
 
-## Keybindings
+## Custom Keybindings
 
 | Keybinding | Action | Context |
 | :--- | :--- | :--- |
 | **`Alt + F`** | Toggle active scratchpad deck | Anywhere |
 | **`Super + Up` / `Down`** | Slide between scratchpad decks | Anywhere |
-| **`Super + Left` / `Right`** | Focus window or split tile | Anywhere |
+| **`Super + Left` / `Right`** | Focus window or split tile (Native C IPC) | Anywhere |
 | **`Super + N` / `Alt + Shift + F`** | Create new scratchpad deck | Anywhere |
-| **`Super + W`** | Close focused window | Anywhere |
-| **`Super + O`** | Move window to / from scratchpad deck | Anywhere |
-| **`Super + T`** | Toggle window floating / tiling | Focused Window |
-| **`Super + -` / `Super + =`** | Horizontal window resize (100px) | Focused Window |
-| **`Super + Shift + -` / `=`** | Vertical window resize (100px) | Focused Window |
-| **`Super + Alt + -` / `+`** | Fine-grain window resize (25px) | Focused Window |
-| **`Super + Space`** | Application launcher | Anywhere |
+| **`Super + W`** | Smart close window (preserves deck focus) | Anywhere |
+| **`Super + O`** | Move window to / from active scratchpad deck | Anywhere |
 
 ---
 
