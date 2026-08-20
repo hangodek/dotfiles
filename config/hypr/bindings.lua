@@ -57,6 +57,16 @@ o.bind("SUPER + UP", "Focus up / previous scratchpad deck", "nav-window up")
 hl.unbind("SUPER + DOWN")
 o.bind("SUPER + DOWN", "Focus down / next scratchpad deck", "nav-window down")
 
+-- Smart spatial window swap & move (preserves individual window sizes and proportions)
+hl.unbind("SUPER + SHIFT + LEFT")
+o.bind("SUPER + SHIFT + LEFT", "Swap window left preserving sizes", "swap-window left")
+hl.unbind("SUPER + SHIFT + RIGHT")
+o.bind("SUPER + SHIFT + RIGHT", "Swap window right preserving sizes", "swap-window right")
+hl.unbind("SUPER + SHIFT + UP")
+o.bind("SUPER + SHIFT + UP", "Swap window up preserving sizes", "swap-window up")
+hl.unbind("SUPER + SHIFT + DOWN")
+o.bind("SUPER + SHIFT + DOWN", "Swap window down preserving sizes", "swap-window down")
+
 -- Original DHH pinned pop-out (sticky across all workspaces + always on top for PiP)
 o.bind("SUPER + SHIFT + O", "Pop window out (float & pin)", "omarchy-hyprland-window-pop")
 

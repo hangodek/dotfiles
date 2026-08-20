@@ -1,0 +1,175 @@
+#!/usr/bin/env python3
+"""
+Smart Dynamic Window Spatial Mover & Swapper for Hyprland.
+Swaps or moves the focused window spatially while strictly preserving
+each window's individual width, height, and layout proportions.
+"""
+
+import sys
+import os
+import json
+import subprocess
+
+
+def get_gap_config():
+    p = os.path.expanduser("~/.config/tactile/config.json")
+    if os.path.isfile(p):
+        try:
+            with open(p) as f:
+                d = json.load(f)
+                gaps = d.get("gaps", {})
+                return gaps.get("inner", 8), gaps.get("outer", 12), gaps.get("top_bar", 35)
+        except Exception:
+            pass
+    return 8, 12, 35
+
+
+def main():
+    if len(sys.argv) < 2:
+        sys.exit(0)
+
+    dir_arg = sys.argv[1].lower()
+
+    try:
+        active = json.loads(subprocess.check_output(['hyprctl', 'activewindow', '-j'], text=True))
+        clients = json.loads(subprocess.check_output(['hyprctl', 'clients', '-j'], text=True))
+        monitors = json.loads(subprocess.check_output(['hyprctl', 'monitors', '-j'], text=True))
+    except Exception:
+        sys.exit(0)
+
+    if not active or not active.get('address'):
+        sys.exit(0)
+
+    focused_addr = active.get('address')
+    ws = active.get('workspace', {})
+    ws_id = ws.get('id')
+    ws_name = str(ws.get('name', ''))
+
+    # Inside Scratchpad Decks: fallback to standard Hyprland deck swap
+    if "special:" in ws_name:
+        d_map = {'left': 'l', 'right': 'r', 'up': 'u', 'down': 'd', 'l': 'l', 'r': 'r', 'u': 'u', 'd': 'd'}
+        hl_dir = d_map.get(dir_arg, 'r')
+        subprocess.run(['hyprctl', 'dispatch', f'hl.dsp.window.swap({{ direction = "{hl_dir}" }})'], check=False)
+        sys.exit(0)
+
+    # Filter windows on this workspace
+    ws_clients = [c for c in clients if (c.get('workspace', {}).get('id') == ws_id or str(c.get('workspace', {}).get('name')) == ws_name) and not c.get('hidden') and c.get('mapped')]
+
+    inner, outer, top_bar = get_gap_config()
+    cur_x, cur_y = active.get('at', [0, 0])
+    cur_w, cur_h = active.get('size', [0, 0])
+
+    if len(ws_clients) <= 1:
+        # Only 1 window: move it within the screen margins without resizing
+        focused_mon = next((m for m in monitors if m.get('focused')), monitors[0] if monitors else None)
+        if not focused_mon:
+            sys.exit(0)
+
+        mon_w = int(focused_mon.get('width', 1920) / focused_mon.get('scale', 1.0))
+        mon_h = int(focused_mon.get('height', 1080) / focused_mon.get('scale', 1.0))
+        mon_x = focused_mon.get('x', 0)
+        mon_y = focused_mon.get('y', 0)
+
+        if dir_arg in ['right', 'r']:
+            new_x = mon_x + mon_w - outer - cur_w
+            subprocess.run(['hyprctl', 'dispatch', f'hl.dsp.window.move({{ x = {new_x}, y = {cur_y} }})'], check=False)
+        elif dir_arg in ['left', 'l']:
+            new_x = mon_x + outer
+            subprocess.run(['hyprctl', 'dispatch', f'hl.dsp.window.move({{ x = {new_x}, y = {cur_y} }})'], check=False)
+        elif dir_arg in ['down', 'd']:
+            new_y = mon_y + mon_h - outer - cur_h
+            subprocess.run(['hyprctl', 'dispatch', f'hl.dsp.window.move({{ x = {cur_x}, y = {new_y} }})'], check=False)
+        elif dir_arg in ['up', 'u']:
+            new_y = mon_y + top_bar + outer
+            subprocess.run(['hyprctl', 'dispatch', f'hl.dsp.window.move({{ x = {cur_x}, y = {new_y} }})'], check=False)
+        sys.exit(0)
+
+    # Multi-window on workspace: Find adjacent neighbor in requested direction
+    neighbor = None
+    min_dist = float('inf')
+
+    for c in ws_clients:
+        if c.get('address') == focused_addr:
+            continue
+        cx, cy = c.get('at', [0, 0])
+        cw, ch = c.get('size', [0, 0])
+
+        if dir_arg in ['right', 'r'] and cx >= cur_x:
+            dist = cx - (cur_x + cur_w)
+            if dist < min_dist:
+                min_dist = dist
+                neighbor = c
+        elif dir_arg in ['left', 'l'] and cx <= cur_x:
+            dist = cur_x - (cx + cw)
+            if dist < min_dist:
+                min_dist = dist
+                neighbor = c
+        elif dir_arg in ['down', 'd'] and cy >= cur_y:
+            dist = cy - (cur_y + cur_h)
+            if dist < min_dist:
+                min_dist = dist
+                neighbor = c
+        elif dir_arg in ['up', 'u'] and cy <= cur_y:
+            dist = cur_y - (cy + ch)
+            if dist < min_dist:
+                min_dist = dist
+                neighbor = c
+
+    if not neighbor:
+        # Fallback to standard Hyprland swap
+        d_map = {'left': 'l', 'right': 'r', 'up': 'u', 'down': 'd', 'l': 'l', 'r': 'r', 'u': 'u', 'd': 'd'}
+        hl_dir = d_map.get(dir_arg, 'r')
+        subprocess.run(['hyprctl', 'dispatch', f'hl.dsp.window.swap({{ direction = "{hl_dir}" }})'], check=False)
+        sys.exit(0)
+
+    n_addr = neighbor.get('address')
+    nx, ny = neighbor.get('at', [0, 0])
+    nw, nh = neighbor.get('size', [0, 0])
+
+    if dir_arg in ['right', 'r']:
+        new_nx = cur_x
+        new_cur_x = new_nx + nw + inner
+        script = f'''
+hyprctl dispatch "hl.dsp.focus({{ window = 'address:{n_addr}' }})"
+hyprctl dispatch "hl.dsp.window.move({{ x = {new_nx}, y = {ny} }})"
+hyprctl dispatch "hl.dsp.focus({{ window = 'address:{focused_addr}' }})"
+hyprctl dispatch "hl.dsp.window.move({{ x = {new_cur_x}, y = {cur_y} }})"
+'''
+        subprocess.run(['bash', '-c', script], check=False)
+
+    elif dir_arg in ['left', 'l']:
+        new_cur_x = nx
+        new_nx = new_cur_x + cur_w + inner
+        script = f'''
+hyprctl dispatch "hl.dsp.focus({{ window = 'address:{n_addr}' }})"
+hyprctl dispatch "hl.dsp.window.move({{ x = {new_nx}, y = {ny} }})"
+hyprctl dispatch "hl.dsp.focus({{ window = 'address:{focused_addr}' }})"
+hyprctl dispatch "hl.dsp.window.move({{ x = {new_cur_x}, y = {cur_y} }})"
+'''
+        subprocess.run(['bash', '-c', script], check=False)
+
+    elif dir_arg in ['down', 'd']:
+        new_ny = cur_y
+        new_cur_y = new_ny + nh + inner
+        script = f'''
+hyprctl dispatch "hl.dsp.focus({{ window = 'address:{n_addr}' }})"
+hyprctl dispatch "hl.dsp.window.move({{ x = {nx}, y = {new_ny} }})"
+hyprctl dispatch "hl.dsp.focus({{ window = 'address:{focused_addr}' }})"
+hyprctl dispatch "hl.dsp.window.move({{ x = {cur_x}, y = {new_cur_y} }})"
+'''
+        subprocess.run(['bash', '-c', script], check=False)
+
+    elif dir_arg in ['up', 'u']:
+        new_cur_y = ny
+        new_ny = new_cur_y + cur_h + inner
+        script = f'''
+hyprctl dispatch "hl.dsp.focus({{ window = 'address:{n_addr}' }})"
+hyprctl dispatch "hl.dsp.window.move({{ x = {nx}, y = {new_ny} }})"
+hyprctl dispatch "hl.dsp.focus({{ window = 'address:{focused_addr}' }})"
+hyprctl dispatch "hl.dsp.window.move({{ x = {cur_x}, y = {new_cur_y} }})"
+'''
+        subprocess.run(['bash', '-c', script], check=False)
+
+
+if __name__ == '__main__':
+    main()

@@ -82,6 +82,7 @@ Personal configuration and customizations for [Omarchy Linux](https://omarchy.or
 | `scratchpad-deck` | Manages independent multi-deck floating workspaces (`special:deck_*`), deck switching, and app launcher hooks. |
 | `powerprofilesctl` | Wrapper around power-profiles-daemon / tuned that enables instant single-click power profile switching. |
 | `nav-window` | Provides smooth 2D navigation (slides between decks with Up/Down, navigates tiles with Left/Right). |
+| `swap-window` | Smart spatial window mover/swapper (`Super + Shift + Left/Right/Up/Down`) preserving individual sizes. |
 | `resize-step` | Resizes the focused window in 10% monitor width increments. |
 | `agyd` | Standalone shortcut executing `agy --dangerously-skip-permissions` with auto-approved tool execution. |
 | `omarchy-default-agent` | Agent switcher wrapper providing seamless selection of Antigravity (`agy`) in Omarchy. |

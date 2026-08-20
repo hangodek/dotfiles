@@ -78,6 +78,7 @@
         ├── omarchy-tactile-setup# CLI/TUI helper & menu dispatcher for Tactile grid presets, weights, and gaps
         ├── scratchpad-deck      # Independent multi-deck floating workspace engine
         ├── nav-window           # Smooth 2D workspace & scratchpad tile navigator
+        ├── swap-window          # Smart spatial window mover/swapper preserving individual sizes
         ├── resize-step          # 10% incremental window resizing helper
         └── powerprofilesctl     # Native DBus wrapper for instant 1-click power profiles
 ```
