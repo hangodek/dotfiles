@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """
-Smart Dynamic Window Spatial Mover & Swapper for Hyprland.
+Smart Dynamic Window Spatial Slot Swapper for Hyprland.
 - For TILED windows: Natively moves window within the Hyprland tiling tree.
-- For FLOATING windows: Spatially swaps screen coordinates while strictly
-  preserving each window's individual width, height, and layout proportions.
+- For FLOATING windows: Atomically swaps bounding box slots (x, y, w, h) between
+  adjacent neighbors with screen boundary clamping so the layout dynamically adapts
+  with zero overlaps, zero gaps, and perfect screen containment for any app (Edge, Foot, etc.).
 - Fast direct Unix Domain Socket 1 IPC for 0ms visual delay.
 """
 
@@ -11,6 +12,26 @@ import sys
 import os
 import json
 import socket
+import signal
+import subprocess
+
+
+def signal_autofill_resync():
+    """Send SIGUSR1 to tactile-autofill so it re-syncs its geometry cache after a floating swap."""
+    try:
+        result = subprocess.run(
+            ['pgrep', '-f', 'tactile-autofill'],
+            capture_output=True, text=True
+        )
+        for pid_str in result.stdout.strip().split('\n'):
+            pid_str = pid_str.strip()
+            if pid_str:
+                try:
+                    os.kill(int(pid_str), signal.SIGUSR1)
+                except (ValueError, ProcessLookupError, PermissionError):
+                    pass
+    except Exception:
+        pass
 
 
 def get_hypr_sock1():
@@ -54,6 +75,23 @@ def get_gap_config():
     return 8, 12, 35
 
 
+def clamp_rect(x, y, w, h, canvas_x, canvas_y, canvas_w, canvas_h):
+    """Ensure a window rect stays strictly inside the monitor canvas."""
+    # Clamp size to canvas
+    w = min(w, canvas_w)
+    h = min(h, canvas_h)
+    # Clamp position
+    if x + w > canvas_x + canvas_w:
+        x = canvas_x + canvas_w - w
+    if y + h > canvas_y + canvas_h:
+        y = canvas_y + canvas_h - h
+    if x < canvas_x:
+        x = canvas_x
+    if y < canvas_y:
+        y = canvas_y
+    return int(x), int(y), int(w), int(h)
+
+
 def main():
     if len(sys.argv) < 2:
         sys.exit(0)
@@ -91,114 +129,103 @@ def main():
         send_hypr_cmd(sock1_path, f'dispatch hl.dsp.window.move {{ direction = "{hl_dir}" }}')
         sys.exit(0)
 
-    # 2. FLOATING TACTILE WINDOWS: Spatial coordinate swap preserving sizes
-    ws_clients = [c for c in clients if (c.get('workspace', {}).get('id') == ws_id or str(c.get('workspace', {}).get('name')) == ws_name) and not c.get('hidden') and c.get('mapped') and c.get('floating') is True]
+    # 2. FLOATING TACTILE WINDOWS: Dynamic Slot Swapper
+    ws_clients = [
+        c for c in clients
+        if (c.get('workspace', {}).get('id') == ws_id or str(c.get('workspace', {}).get('name')) == ws_name)
+        and not c.get('hidden') and c.get('mapped') and c.get('floating') is True
+    ]
+
+    if len(ws_clients) <= 1:
+        sys.exit(0)
+
+    focused_mon = next((m for m in monitors if m.get('focused')), monitors[0] if monitors else None)
+    if not focused_mon:
+        sys.exit(0)
 
     inner, outer, top_bar = get_gap_config()
+    mon_w = int(focused_mon.get('width', 1920) / focused_mon.get('scale', 1.0))
+    mon_h = int(focused_mon.get('height', 1080) / focused_mon.get('scale', 1.0))
+    mon_x = focused_mon.get('x', 0)
+    mon_y = focused_mon.get('y', 0)
+
+    canvas_x = mon_x + outer
+    canvas_y = mon_y + top_bar + outer
+    canvas_w = mon_w - (2 * outer)
+    canvas_h = mon_h - top_bar - (2 * outer)
+
     cur_x, cur_y = active.get('at', [0, 0])
     cur_w, cur_h = active.get('size', [0, 0])
 
-    if len(ws_clients) <= 1:
-        # Sole floating window: slide within monitor borders
-        focused_mon = next((m for m in monitors if m.get('focused')), monitors[0] if monitors else None)
-        if not focused_mon:
-            sys.exit(0)
-
-        mon_w = int(focused_mon.get('width', 1920) / focused_mon.get('scale', 1.0))
-        mon_h = int(focused_mon.get('height', 1080) / focused_mon.get('scale', 1.0))
-        mon_x = focused_mon.get('x', 0)
-        mon_y = focused_mon.get('y', 0)
-
-        if dir_arg in ['right', 'r']:
-            new_x = mon_x + mon_w - outer - cur_w
-            send_hypr_cmd(sock1_path, f'dispatch hl.dsp.window.move {{ x = {new_x}, y = {cur_y} }}')
-        elif dir_arg in ['left', 'l']:
-            new_x = mon_x + outer
-            send_hypr_cmd(sock1_path, f'dispatch hl.dsp.window.move {{ x = {new_x}, y = {cur_y} }}')
-        elif dir_arg in ['down', 'd']:
-            new_y = mon_y + mon_h - outer - cur_h
-            send_hypr_cmd(sock1_path, f'dispatch hl.dsp.window.move {{ x = {cur_x}, y = {new_y} }}')
-        elif dir_arg in ['up', 'u']:
-            new_y = mon_y + top_bar + outer
-            send_hypr_cmd(sock1_path, f'dispatch hl.dsp.window.move {{ x = {cur_x}, y = {new_y} }}')
-        sys.exit(0)
-
-    # Multi-floating on workspace: Find adjacent neighbor in requested direction
-    neighbor = None
-    min_dist = float('inf')
-
+    candidates = []
     for c in ws_clients:
         if c.get('address') == focused_addr:
             continue
         cx, cy = c.get('at', [0, 0])
         cw, ch = c.get('size', [0, 0])
 
-        if dir_arg in ['right', 'r'] and cx >= cur_x:
-            dist = cx - (cur_x + cur_w)
-            if dist < min_dist:
-                min_dist = dist
-                neighbor = c
-        elif dir_arg in ['left', 'l'] and cx <= cur_x:
-            dist = cur_x - (cx + cw)
-            if dist < min_dist:
-                min_dist = dist
-                neighbor = c
-        elif dir_arg in ['down', 'd'] and cy >= cur_y:
-            dist = cy - (cur_y + cur_h)
-            if dist < min_dist:
-                min_dist = dist
-                neighbor = c
-        elif dir_arg in ['up', 'u'] and cy <= cur_y:
-            dist = cur_y - (cy + ch)
-            if dist < min_dist:
-                min_dist = dist
-                neighbor = c
-
-    if not neighbor:
-        # Fallback to sliding to screen edge
-        focused_mon = next((m for m in monitors if m.get('focused')), monitors[0] if monitors else None)
-        if not focused_mon:
-            sys.exit(0)
-        mon_w = int(focused_mon.get('width', 1920) / focused_mon.get('scale', 1.0))
-        mon_h = int(focused_mon.get('height', 1080) / focused_mon.get('scale', 1.0))
-        mon_x = focused_mon.get('x', 0)
-        mon_y = focused_mon.get('y', 0)
-
         if dir_arg in ['right', 'r']:
-            new_x = mon_x + mon_w - outer - cur_w
-            send_hypr_cmd(sock1_path, f'dispatch hl.dsp.window.move {{ x = {new_x}, y = {cur_y} }}')
+            if cx >= cur_x + 10:  # to the right
+                dist_primary = cx - (cur_x + cur_w)
+                overlap = max(0, min(cur_y + cur_h, cy + ch) - max(cur_y, cy))
+                dist_sec = abs((cy + ch / 2) - (cur_y + cur_h / 2))
+                candidates.append((dist_primary, -overlap, dist_sec, c))
+
         elif dir_arg in ['left', 'l']:
-            new_x = mon_x + outer
-            send_hypr_cmd(sock1_path, f'dispatch hl.dsp.window.move {{ x = {new_x}, y = {cur_y} }}')
+            if cx + cw <= cur_x + cur_w - 10:  # to the left
+                dist_primary = cur_x - (cx + cw)
+                overlap = max(0, min(cur_y + cur_h, cy + ch) - max(cur_y, cy))
+                dist_sec = abs((cy + ch / 2) - (cur_y + cur_h / 2))
+                candidates.append((dist_primary, -overlap, dist_sec, c))
+
+        elif dir_arg in ['down', 'd']:
+            if cy >= cur_y + 10:  # below
+                dist_primary = cy - (cur_y + cur_h)
+                overlap = max(0, min(cur_x + cur_w, cx + cw) - max(cur_x, cx))
+                dist_sec = abs((cx + cw / 2) - (cur_x + cur_w / 2))
+                candidates.append((dist_primary, -overlap, dist_sec, c))
+
+        elif dir_arg in ['up', 'u']:
+            if cy + ch <= cur_y + cur_h - 10:  # above
+                dist_primary = cur_y - (cy + ch)
+                overlap = max(0, min(cur_x + cur_w, cx + cw) - max(cur_x, cx))
+                dist_sec = abs((cx + cw / 2) - (cur_x + cur_w / 2))
+                candidates.append((dist_primary, -overlap, dist_sec, c))
+
+    if not candidates:
         sys.exit(0)
 
+    # Sort candidates to find the closest, most overlapping direct neighbor
+    candidates.sort(key=lambda item: (
+        0 if item[1] < 0 else 1,  # Prioritize candidates with actual perpendicular overlap
+        item[0],                  # Closest primary distance
+        item[1],                  # Largest overlap
+        item[2]                   # Closest center alignment
+    ))
+
+    neighbor = candidates[0][3]
     n_addr = neighbor.get('address')
     nx, ny = neighbor.get('at', [0, 0])
     nw, nh = neighbor.get('size', [0, 0])
 
-    if dir_arg in ['right', 'r']:
-        new_nx = cur_x
-        new_cur_x = new_nx + nw + inner
-        batch_cmd = f'[[BATCH]]dispatch hl.dsp.focus {{ window = "address:{n_addr}" }} ; dispatch hl.dsp.window.move {{ x = {new_nx}, y = {ny} }} ; dispatch hl.dsp.focus {{ window = "address:{focused_addr}" }} ; dispatch hl.dsp.window.move {{ x = {new_cur_x}, y = {cur_y} }}'
-        send_hypr_cmd(sock1_path, batch_cmd)
+    # ATOMIC DYNAMIC SLOT SWAP with screen containment clamping:
+    # 1. Neighbor takes Focused window's slot (cur_x, cur_y, cur_w, cur_h)
+    n_tx, n_ty, n_tw, n_th = clamp_rect(cur_x, cur_y, cur_w, cur_h, canvas_x, canvas_y, canvas_w, canvas_h)
+    # 2. Focused window takes Neighbor's slot (nx, ny, nw, nh)
+    f_tx, f_ty, f_tw, f_th = clamp_rect(nx, ny, nw, nh, canvas_x, canvas_y, canvas_w, canvas_h)
 
-    elif dir_arg in ['left', 'l']:
-        new_cur_x = nx
-        new_nx = new_cur_x + cur_w + inner
-        batch_cmd = f'[[BATCH]]dispatch hl.dsp.focus {{ window = "address:{n_addr}" }} ; dispatch hl.dsp.window.move {{ x = {new_nx}, y = {ny} }} ; dispatch hl.dsp.focus {{ window = "address:{focused_addr}" }} ; dispatch hl.dsp.window.move {{ x = {new_cur_x}, y = {cur_y} }}'
-        send_hypr_cmd(sock1_path, batch_cmd)
+    batch_cmd = (
+        f'[[BATCH]]dispatch hl.dsp.focus {{ window = "address:{n_addr}" }} ; '
+        f'dispatch hl.dsp.window.resize {{ x = {n_tw}, y = {n_th} }} ; '
+        f'dispatch hl.dsp.window.move {{ x = {n_tx}, y = {n_ty} }} ; '
+        f'dispatch hl.dsp.focus {{ window = "address:{focused_addr}" }} ; '
+        f'dispatch hl.dsp.window.resize {{ x = {f_tw}, y = {f_th} }} ; '
+        f'dispatch hl.dsp.window.move {{ x = {f_tx}, y = {f_ty} }}'
+    )
+    send_hypr_cmd(sock1_path, batch_cmd)
 
-    elif dir_arg in ['down', 'd']:
-        new_ny = cur_y
-        new_cur_y = new_ny + nh + inner
-        batch_cmd = f'[[BATCH]]dispatch hl.dsp.focus {{ window = "address:{n_addr}" }} ; dispatch hl.dsp.window.move {{ x = {nx}, y = {new_ny} }} ; dispatch hl.dsp.focus {{ window = "address:{focused_addr}" }} ; dispatch hl.dsp.window.move {{ x = {cur_x}, y = {new_cur_y} }}'
-        send_hypr_cmd(sock1_path, batch_cmd)
-
-    elif dir_arg in ['up', 'u']:
-        new_cur_y = ny
-        new_ny = new_cur_y + cur_h + inner
-        batch_cmd = f'[[BATCH]]dispatch hl.dsp.focus {{ window = "address:{n_addr}" }} ; dispatch hl.dsp.window.move {{ x = {nx}, y = {new_ny} }} ; dispatch hl.dsp.focus {{ window = "address:{focused_addr}" }} ; dispatch hl.dsp.window.move {{ x = {cur_x}, y = {new_cur_y} }}'
-        send_hypr_cmd(sock1_path, batch_cmd)
+    # Notify tactile-autofill daemon to instantly sync cached geometries
+    signal_autofill_resync()
 
 
 if __name__ == '__main__':

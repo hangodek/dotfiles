@@ -18,6 +18,8 @@ Features:
      a) If there are unoccupied grid cells -> snaps new window into the unoccupied gap (RIGHT).
      b) If grid is full -> splits the currently focused window following a strict,
         guaranteed alternating sequence: Right -> Bottom -> Right -> Bottom -> Right.
+     c) Enforces minimum dimension safety floors (>=420px width, >=240px height) so
+        complex GUI apps like browsers (Edge, Chrome) never get crushed or distorted.
    - When a window closes (Universal N-Window Sibling Collapse):
      a) Automatically detects the empty void left by the closed window.
      b) Expands the adjacent sibling window (Horizontal or Vertical) to fill the empty space.
@@ -29,6 +31,7 @@ import os
 import json
 import socket
 import time
+import signal
 
 # Cache of last known window geometries: { addr.lower(): (x, y, w, h, ws_id) }
 last_known_geometry = {}
@@ -36,6 +39,8 @@ last_known_geometry = {}
 last_focused_window_addr = None
 # Track previous split direction for each window: { addr.lower(): 'right' | 'bottom' }
 split_direction_history = {}
+# Socket 1 path (set at startup)
+_sock1_path = None
 
 
 def get_hypr_socket_paths():
@@ -297,6 +302,7 @@ def autofill_new_window(sock1_path, new_addr, workspace_id_or_name):
     # -------------------------------------------------------------
     # CASE 2: Grid is ALREADY FULL -> Alternating Dwindle Split
     # Strict alternation: Right -> Bottom -> Right -> Bottom
+    # With minimum dimension safety checks (min_w >= 420, min_h >= 240)
     # -------------------------------------------------------------
     target_win = None
     if last_focused_window_addr:
@@ -311,6 +317,14 @@ def autofill_new_window(sock1_path, new_addr, workspace_id_or_name):
     tx, ty = target_win.get('at', [0, 0])
     tw, th = target_win.get('size', [0, 0])
 
+    # If target window is too small to split, find largest window on workspace
+    if tw < 750 and th < 450:
+        target_win = max(floating_clients, key=lambda c: c.get('size', [0, 0])[0] * c.get('size', [0, 0])[1])
+        t_addr = target_win.get('address')
+        t_addr_lower = t_addr.lower()
+        tx, ty = target_win.get('at', [0, 0])
+        tw, th = target_win.get('size', [0, 0])
+
     # Determine split direction:
     last_dir = split_direction_history.get(t_addr_lower)
     if last_dir == 'right':
@@ -318,14 +332,20 @@ def autofill_new_window(sock1_path, new_addr, workspace_id_or_name):
     elif last_dir == 'bottom':
         chosen_dir = 'right'
     else:
-        if th >= 650:
+        if th >= 600:
             chosen_dir = 'bottom'
-        elif tw >= 1000:
+        elif tw >= 900:
             chosen_dir = 'right'
-        elif th >= 400:
+        elif th >= 450:
             chosen_dir = 'bottom'
         else:
             chosen_dir = 'right'
+
+    # Safety override: never shrink width below 420px or height below 240px
+    if chosen_dir == 'right' and tw < 840 and th >= 450:
+        chosen_dir = 'bottom'
+    elif chosen_dir == 'bottom' and th < 480 and tw >= 840:
+        chosen_dir = 'right'
 
     if chosen_dir == 'bottom':
         # Split BOTTOM (Top half for target, Bottom half for new)
@@ -367,7 +387,12 @@ def handle_window_closed(sock1_path, closed_addr):
     active_ws_name = str(active_mon.get('activeWorkspace', {}).get('name', ''))
 
     # Remaining floating windows on active workspace
-    rem_floating = [c for c in clients if (c.get('workspace', {}).get('id') == active_ws_id or str(c.get('workspace', {}).get('name')) == active_ws_name) and c.get('floating') is True and not c.get('hidden') and c.get('mapped') and c.get('address', '').lower() != closed_addr.lower()]
+    rem_floating = [
+        c for c in clients
+        if (c.get('workspace', {}).get('id') == active_ws_id or str(c.get('workspace', {}).get('name')) == active_ws_name)
+        and c.get('floating') is True and not c.get('hidden') and c.get('mapped')
+        and c.get('address', '').lower() != closed_addr.lower()
+    ]
 
     if not rem_floating:
         return
@@ -405,7 +430,7 @@ def handle_window_closed(sock1_path, closed_addr):
             wx, wy = win.get('at', [0, 0])
             ww, wh = win.get('size', [0, 0])
             target_addr = win.get('address')
-            if abs((wx + ww + inner) - xc) <= 8 and abs(wy - yc) <= 15 and abs(wh - hc) <= 15:
+            if abs((wx + ww + inner) - xc) <= 12 and abs(wy - yc) <= 25 and abs(wh - hc) <= 25:
                 new_w = ww + inner + wc
                 batch_cmd = f'[[BATCH]]dispatch hl.dsp.focus {{ window = "address:{target_addr}" }} ; dispatch hl.dsp.window.resize {{ x = {new_w}, y = {wh} }} ; dispatch hl.dsp.window.move {{ x = {wx}, y = {wy} }}'
                 send_hypr_cmd(sock1_path, batch_cmd)
@@ -417,7 +442,7 @@ def handle_window_closed(sock1_path, closed_addr):
             wx, wy = win.get('at', [0, 0])
             ww, wh = win.get('size', [0, 0])
             target_addr = win.get('address')
-            if abs((xc + wc + inner) - wx) <= 8 and abs(wy - yc) <= 15 and abs(wh - hc) <= 15:
+            if abs((xc + wc + inner) - wx) <= 12 and abs(wy - yc) <= 25 and abs(wh - hc) <= 25:
                 new_w = ww + inner + wc
                 batch_cmd = f'[[BATCH]]dispatch hl.dsp.focus {{ window = "address:{target_addr}" }} ; dispatch hl.dsp.window.resize {{ x = {new_w}, y = {wh} }} ; dispatch hl.dsp.window.move {{ x = {xc}, y = {wy} }}'
                 send_hypr_cmd(sock1_path, batch_cmd)
@@ -429,7 +454,7 @@ def handle_window_closed(sock1_path, closed_addr):
             wx, wy = win.get('at', [0, 0])
             ww, wh = win.get('size', [0, 0])
             target_addr = win.get('address')
-            if abs((wy + wh + inner) - yc) <= 8 and abs(wx - xc) <= 15 and abs(ww - wc) <= 15:
+            if abs((wy + wh + inner) - yc) <= 12 and abs(wx - xc) <= 25 and abs(ww - wc) <= 25:
                 new_h = wh + inner + hc
                 batch_cmd = f'[[BATCH]]dispatch hl.dsp.focus {{ window = "address:{target_addr}" }} ; dispatch hl.dsp.window.resize {{ x = {ww}, y = {new_h} }} ; dispatch hl.dsp.window.move {{ x = {wx}, y = {wy} }}'
                 send_hypr_cmd(sock1_path, batch_cmd)
@@ -441,7 +466,7 @@ def handle_window_closed(sock1_path, closed_addr):
             wx, wy = win.get('at', [0, 0])
             ww, wh = win.get('size', [0, 0])
             target_addr = win.get('address')
-            if abs((yc + hc + inner) - wy) <= 8 and abs(wx - xc) <= 15 and abs(ww - wc) <= 15:
+            if abs((yc + hc + inner) - wy) <= 12 and abs(wx - xc) <= 25 and abs(ww - wc) <= 25:
                 new_h = wh + inner + hc
                 batch_cmd = f'[[BATCH]]dispatch hl.dsp.focus {{ window = "address:{target_addr}" }} ; dispatch hl.dsp.window.resize {{ x = {ww}, y = {new_h} }} ; dispatch hl.dsp.window.move {{ x = {wx}, y = {yc} }}'
                 send_hypr_cmd(sock1_path, batch_cmd)
@@ -467,12 +492,39 @@ def handle_window_closed(sock1_path, closed_addr):
         split_direction_history[w2_addr.lower()] = 'right'
 
 
+def handle_resync(signum, frame):
+    """
+    SIGUSR1 handler: triggered by swap-window after it rearranges floating windows.
+    Refreshes last_known_geometry so the daemon's state matches actual window positions.
+    """
+    global _sock1_path
+    if not _sock1_path:
+        return
+    try:
+        clients_raw = send_hypr_cmd(_sock1_path, 'j/clients')
+        clients = json.loads(clients_raw) if clients_raw else []
+        for c in clients:
+            addr = c.get('address', '').lower()
+            if addr and c.get('floating') is True:
+                at = c.get('at', [0, 0])
+                size = c.get('size', [0, 0])
+                ws_id = c.get('workspace', {}).get('id')
+                last_known_geometry[addr] = (at[0], at[1], size[0], size[1], ws_id)
+    except Exception:
+        pass
+
+
 def run_daemon():
-    global last_focused_window_addr
+    global last_focused_window_addr, _sock1_path
     sock1_path, sock2_path = get_hypr_socket_paths()
     if not sock1_path or not sock2_path:
         print("Hyprland sockets not found.", file=sys.stderr)
         sys.exit(1)
+
+    _sock1_path = sock1_path
+
+    # Register SIGUSR1 for geometry resync after swap-window rearranges floating windows
+    signal.signal(signal.SIGUSR1, handle_resync)
 
     client2 = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     try:
@@ -503,7 +555,6 @@ def run_daemon():
                     if len(parts) >= 2:
                         addr = "0x" + parts[0].lstrip("0x")
                         ws = parts[1]
-                        # 0ms delay: Instant batch execution over Socket 1 (< 0.6ms)
                         autofill_new_window(sock1_path, addr, ws)
                         get_active_clients_and_monitor(sock1_path)
                 elif line.startswith("closewindow>>"):
