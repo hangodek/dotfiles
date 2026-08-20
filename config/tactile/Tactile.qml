@@ -1,4 +1,5 @@
 import Quickshell
+import Quickshell.Io
 import Quickshell.Wayland
 import QtQuick
 import QtQuick.Layouts
@@ -37,13 +38,25 @@ PanelWindow {
     property var gridModel: []
 
     Component.onCompleted: {
+        loadConfig();
+        fetchStateProc.running = true;
+    }
+
+    function loadConfig() {
         try {
-            var raw = Quickshell.env("TACTILE_STATE_JSON") || "{}";
-            root.stateData = JSON.parse(raw);
-            root.buildGridModel();
-        } catch (e) {
-            console.log("Error parsing state JSON:", e);
-        }
+            var raw = Quickshell.env("TACTILE_STATE_JSON");
+            if (raw) {
+                root.stateData = JSON.parse(raw);
+            } else {
+                var home = Quickshell.env("HOME") || "/home/han";
+                var path = home + "/.config/tactile/config.json";
+                var file = File.read(path);
+                if (file) {
+                    root.stateData.config = JSON.parse(file);
+                }
+            }
+        } catch (e) {}
+        root.buildGridModel();
     }
 
     function buildGridModel() {
@@ -74,7 +87,7 @@ PanelWindow {
     }
 
     function quitOverlay() {
-        Quickshell.execDetached(["kill", "-9", Quickshell.processId.toString()]);
+        Qt.quit();
     }
 
     function isInRange(r, c) {
@@ -178,65 +191,49 @@ PanelWindow {
         var addr = win.address || "";
         var isFullscreen = win.fullscreen && win.fullscreen !== 0;
 
-        var script = "";
+        var batchCmd = "[[BATCH]]";
         if (isFullscreen) {
-            script += "hyprctl dispatch \"hl.dsp.window.fullscreen({ action = 'toggle' })\"\n";
+            batchCmd += "dispatch hl.dsp.window.fullscreen { action = \"toggle\" } ; ";
         }
         if (addr !== "") {
-            script += "hyprctl dispatch \"hl.dsp.focus({ window = 'address:" + addr + "' })\"\n";
+            batchCmd += "dispatch hl.dsp.focus { window = \"address:" + addr + "\" } ; ";
         }
-        script += "hyprctl dispatch \"hl.dsp.window.float({ action = 'on' })\"\n";
-        script += "hyprctl dispatch \"hl.dsp.window.resize({ x = " + targetW + ", y = " + targetH + " })\"\n";
-        script += "hyprctl dispatch \"hl.dsp.window.move({ x = " + targetX + ", y = " + targetY + " })\"\n";
+        batchCmd += "dispatch hl.dsp.window.float { action = \"on\" } ; ";
+        batchCmd += "dispatch hl.dsp.window.resize { x = " + targetW + ", y = " + targetH + " } ; ";
+        batchCmd += "dispatch hl.dsp.window.move { x = " + targetX + ", y = " + targetY + " }";
 
-        // Multi-window auto-reorganize into unoccupied space
-        var clients = root.stateData.clients || [];
-        var targetWs = (win.workspace && win.workspace.name) || "";
-        var otherClients = clients.filter(function(c) {
-            return c.address !== addr && (c.workspace && c.workspace.name === targetWs) && !c.hidden && c.mapped;
-        });
+        snapDispatchProc.batchCommand = batchCmd;
+        snapDispatchProc.running = true;
+    }
 
-        var occupied = {};
-        for (var r = minR; r <= maxR; r++) {
-            for (var c = minC; c <= maxC; c++) {
-                occupied[r + "," + c] = true;
+    Process {
+        id: fetchStateProc
+        command: ["bash", "-c", "hyprctl activewindow -j; echo '---'; hyprctl monitors -j; echo '---'; hyprctl clients -j"]
+        stdout: StdioCollector {
+            waitForEnd: true
+            onStreamFinished: function() {
+                try {
+                    var parts = text.split("---");
+                    if (parts.length >= 2) {
+                        root.stateData.window = JSON.parse(parts[0].trim()) || {};
+                        var mons = JSON.parse(parts[1].trim()) || [];
+                        root.stateData.monitor = mons.find(function(m) { return m.focused; }) || mons[0] || {};
+                    }
+                    if (parts.length >= 3) {
+                        root.stateData.clients = JSON.parse(parts[2].trim()) || [];
+                    }
+                } catch (e) {}
             }
         }
+    }
 
-        var unoccupied = [];
-        for (var r = 0; r < rows; r++) {
-            for (var c = 0; c < cols; c++) {
-                if (!occupied[r + "," + c]) {
-                    unoccupied.push([r, c]);
-                }
-            }
+    Process {
+        id: snapDispatchProc
+        property string batchCommand: ""
+        command: ["hyprctl", "--batch", batchCommand]
+        onExited: {
+            root.quitOverlay();
         }
-
-        if (otherClients.length > 0 && unoccupied.length > 0) {
-            var oMinR = rows, oMaxR = 0, oMinC = cols, oMaxC = 0;
-            for (var i = 0; i < unoccupied.length; i++) {
-                var ur = unoccupied[i][0], uc = unoccupied[i][1];
-                if (ur < oMinR) oMinR = ur;
-                if (ur > oMaxR) oMaxR = ur;
-                if (uc < oMinC) oMinC = uc;
-                if (uc > oMaxC) oMaxC = uc;
-            }
-
-            var oXRes = computeDimensionCoords(canvasX, canvasW, inner, colWeights, oMinC, oMaxC);
-            var oYRes = computeDimensionCoords(canvasY, canvasH, inner, rowWeights, oMinR, oMaxR);
-
-            for (var j = 0; j < otherClients.length; j++) {
-                var oAddr = otherClients[j].address;
-                script += "hyprctl dispatch \"hl.dsp.focus({ window = 'address:" + oAddr + "' })\"\n";
-                script += "hyprctl dispatch \"hl.dsp.window.float({ action = 'on' })\"\n";
-                script += "hyprctl dispatch \"hl.dsp.window.resize({ x = " + oXRes.size + ", y = " + oYRes.size + " })\"\n";
-                script += "hyprctl dispatch \"hl.dsp.window.move({ x = " + oXRes.start + ", y = " + oYRes.start + " })\"\n";
-            }
-            script += "hyprctl dispatch \"hl.dsp.focus({ window = 'address:" + addr + "' })\"\n";
-        }
-
-        Quickshell.execDetached(["bash", "-c", script]);
-        root.quitOverlay();
     }
 
     Item {
