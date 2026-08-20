@@ -1,2 +1,3 @@
--- Extra autostart processes.
-o.launch_on_start("tactile-autofill")
+-- Personal autostart daemons and background services
+-- Add any custom background applications here:
+-- o.launch_on_start("my-daemon")

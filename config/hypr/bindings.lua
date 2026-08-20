@@ -57,22 +57,22 @@ o.bind("SUPER + UP", "Focus up / previous scratchpad deck", "nav-window up")
 hl.unbind("SUPER + DOWN")
 o.bind("SUPER + DOWN", "Focus down / next scratchpad deck", "nav-window down")
 
--- Smart spatial window swap & move (preserves individual window sizes and proportions)
+-- Native Hyprland window swap & move in layout tree
 hl.unbind("SUPER + SHIFT + LEFT")
-o.bind("SUPER + SHIFT + LEFT", "Swap window left preserving sizes", "swap-window left")
+o.bind("SUPER + SHIFT + LEFT", "Move window left in layout", hl.dsp.window.move({ direction = "l" }))
 hl.unbind("SUPER + SHIFT + RIGHT")
-o.bind("SUPER + SHIFT + RIGHT", "Swap window right preserving sizes", "swap-window right")
+o.bind("SUPER + SHIFT + RIGHT", "Move window right in layout", hl.dsp.window.move({ direction = "r" }))
 hl.unbind("SUPER + SHIFT + UP")
-o.bind("SUPER + SHIFT + UP", "Swap window up preserving sizes", "swap-window up")
+o.bind("SUPER + SHIFT + UP", "Move window up in layout", hl.dsp.window.move({ direction = "u" }))
 hl.unbind("SUPER + SHIFT + DOWN")
-o.bind("SUPER + SHIFT + DOWN", "Swap window down preserving sizes", "swap-window down")
+o.bind("SUPER + SHIFT + DOWN", "Move window down in layout", hl.dsp.window.move({ direction = "d" }))
 
 -- Original DHH pinned pop-out (sticky across all workspaces + always on top for PiP)
 o.bind("SUPER + SHIFT + O", "Pop window out (float & pin)", "omarchy-hyprland-window-pop")
 
--- Tactile interactive 2x3 Grid Snapper (Q W E / A S D)
+-- Super+T: Toggle window floating/tiling
 hl.unbind("SUPER + T")
-o.bind("SUPER + T", "Tactile window grid overlay", "tactile")
+o.bind("SUPER + T", "Toggle window floating/tiling", hl.dsp.window.float({ action = "toggle" }))
 o.bind("SUPER + SHIFT + T", "Toggle window floating/tiling", hl.dsp.window.float({ action = "toggle" }))
 
 

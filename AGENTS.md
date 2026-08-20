@@ -58,7 +58,7 @@
 │   │   ├── bindings.lua         # Personal keybindings (scratchpads, navigation, apps)
 │   │   ├── looknfeel.lua        # Window borders, gaps, animations, decoration
 │   │   ├── monitors.lua         # Display scaling, resolution, refresh rate
-│   │   └── autostart.lua        # Background daemons and startup apps
+│   │   └── autostart.lua        # Personal background daemons and startup apps
 │   ├── omarchy/
 │   │   ├── shell.json           # Top bar layout, transparency, and widget placement
 │   │   └── extensions/
@@ -73,13 +73,9 @@
         ├── agyd                 # Auto-permission wrapper for Google Antigravity CLI
         ├── omarchy-agent        # Default agent dispatcher with agy floating TUI support
         ├── omarchy-default-agent# Agent switcher supporting Antigravity (agy)
-        ├── tactile              # Interactive Grid HUD (Super+T) for 2-key bounding-box snapping
-        ├── tactile-autofill     # Background daemon auto-filling unoccupied grid gaps on new window open
-        ├── omarchy-tactile-setup# CLI/TUI helper & menu dispatcher for Tactile grid presets, weights, and gaps
+        ├── nav-window           # Compiled C 2D workspace & scratchpad tile navigator (1.74ms)
+        ├── resize-step          # Compiled C 10% incremental window resizing helper (1.47ms)
         ├── scratchpad-deck      # Independent multi-deck floating workspace engine
-        ├── nav-window           # Smooth 2D workspace & scratchpad tile navigator
-        ├── swap-window          # Smart spatial window mover/swapper preserving individual sizes
-        ├── resize-step          # 10% incremental window resizing helper
         └── powerprofilesctl     # Native DBus wrapper for instant 1-click power profiles
 ```
 
@@ -141,25 +137,6 @@
 
 ---
 
-### E. Tactile Grid HUD & Bounding-Box Snapping (`Super + T`)
-- **Concept**: An on-screen interactive 2-row × 3-column overlay (`Q W E / A S D`) inspired by GNOME Tactile.
-- **Behavior**:
-  - `Super + T`: Triggers the GTK4 LayerShell grid HUD.
-  - Pressing two keys (e.g. `Q` then `D`) snaps the focused window/terminal to the bounding box spanning between those two tiles:
-    - `Q + D`: Full Screen canvas.
-    - `Q + A`: Left 1/3 full-height column.
-    - `Q + S`: Left 2/3 full-height column.
-    - `W + D`: Right 2/3 full-height column.
-    - `E + D`: Right 1/3 full-height column.
-    - `Q + E`: Top half strip.
-    - `A + D`: Bottom half strip.
-    - `Q + Q` (or `Q + Enter`): Single tile Top-Left 1/3.
-    - `Esc`: Cancels overlay with 0 changes.
-- **Config**: `~/dotfiles/config/tactile/config.json` controls outer gaps (12px), inner gaps (8px), and top bar offset (35px).
-- **Engine Script**: `~/dotfiles/local/bin/tactile`.
-
----
-
 ## 🛠️ 5. Common Maintenance Commands for AI Agents
 
 ```bash
@@ -184,14 +161,14 @@ git -C ~/dotfiles status
 
 ---
 
-## 🔄 6. Disaster Recovery / Fresh Install Procedure
+## 🔄 6. Clean Install / Restore Procedure
 
 On a fresh Arch Linux / Omarchy install:
 
 ```bash
 git clone git@github.com:hangodek/dotfiles.git ~/dotfiles
 
-# Standard restore (symlinks, scripts, menu animation patch, Edge defaults)
+# Clean standard restore (links configs, compiles native C helpers, applies menu patch)
 bash ~/dotfiles/bootstrap.sh
 
 # Complete restore + CachyOS x86-64-v3 Kernel & Performance Suite
