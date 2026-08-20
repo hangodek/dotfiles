@@ -79,10 +79,13 @@ if [[ -f "$DOTFILES/config/bash/aliases.sh" ]]; then
 fi
 
 echo "--> Compiling high-performance native helpers..."
-if [[ -f "$DOTFILES/local/bin/swap-window.c" ]]; then
-  gcc -O3 "$DOTFILES/local/bin/swap-window.c" -o "$DOTFILES/local/bin/swap-window"
-  echo "    compiled swap-window native helper"
-fi
+for src_c in "$DOTFILES/local/bin/"*.c; do
+  if [[ -f "$src_c" ]]; then
+    bin_name="${src_c%.c}"
+    gcc -O3 "$src_c" -o "$bin_name"
+    echo "    compiled $(basename "$bin_name") native helper"
+  fi
+done
 
 echo "--> Installing personal scripts..."
 mkdir -p "$HOME/.local/bin"

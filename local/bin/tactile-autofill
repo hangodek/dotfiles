@@ -402,13 +402,22 @@ def handle_window_closed(sock1_path, closed_addr):
     if not mon:
         return
 
+    cached_geo = last_known_geometry.get(closed_addr.lower())
+    if not cached_geo:
+        return
+
+    xc, yc, wc, hc, closed_ws = cached_geo
+    closed_ws_str = str(closed_ws)
+
     active_mon = next((m for m in [mon] if m.get('focused')), mon)
-    active_ws_id = active_mon.get('activeWorkspace', {}).get('id')
+    active_ws_id = str(active_mon.get('activeWorkspace', {}).get('id', ''))
     active_ws_name = str(active_mon.get('activeWorkspace', {}).get('name', ''))
+
+    target_ws = closed_ws_str if closed_ws_str and closed_ws_str != 'None' else active_ws_id
 
     rem_floating = [
         c for c in clients
-        if (c.get('workspace', {}).get('id') == active_ws_id or str(c.get('workspace', {}).get('name')) == active_ws_name)
+        if (str(c.get('workspace', {}).get('id')) == target_ws or str(c.get('workspace', {}).get('name')) == target_ws or str(c.get('workspace', {}).get('name')) == closed_ws_str)
         and c.get('floating') is True and not c.get('hidden') and c.get('mapped')
         and c.get('address', '').lower() != closed_addr.lower()
     ]

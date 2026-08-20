@@ -92,6 +92,32 @@ hl.config({
   dwindle = {
     special_scale_factor = 0.85,
   },
+  misc = {
+    vrr = 0,
+    disable_hyprland_logo = true,
+    disable_splash_rendering = true,
+    animate_manual_resizes = true,
+    animate_mouse_windowdragging = true,
+    enable_swallow = true,
+    swallow_regex = "^(Alacritty|kitty|foot|ghostty)$",
+  },
+  cursor = {
+    no_warps = true,
+    inactive_timeout = 5,
+  },
+})
+
+-- Smart floating & centering for system dialogs, modals, and file pickers
+o.window({ class = "(xdg-desktop-portal-gtk|org.kde.polkit-kde-authentication-agent-1|polkit-gnome-authentication-agent-1|zenity|file-roller|pavucontrol|nm-connection-editor|blueman-manager)" }, {
+  float = true,
+  center = true,
+  tag = "+floating-window",
+})
+
+o.window({ title = "(Open File|Open Folder|Save File|Save As|Select a File|Choose Files|File Upload|Authentication Required)" }, {
+  float = true,
+  center = true,
+  tag = "+floating-window",
 })
 
 

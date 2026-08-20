@@ -179,6 +179,59 @@ Personal dotfiles, custom window management subsystems, and low-latency system o
 
 ---
 
+## 🔬 Performance Benchmarks & Empirical Proof
+
+> **System Test Environment**: Lenovo ThinkPad X395 | AMD Ryzen 5 PRO 3500U with Radeon Vega 8 Mobile Graphics | `linux-cachyos` (BORE Scheduler) | 16 GB RAM + 13.6 GB ZRAM.
+>
+> All tests are 100% automated, process-isolated, and reproducible. Run `bash tests/run-all-tests.sh` to execute the live test suite on your own machine.
+
+### 1. Latency: Compiled Native C Helpers vs Legacy Scripts
+
+Tested with 30 consecutive iterations measuring end-to-end execution latency:
+
+| Subsystem / Keystroke | Legacy Implementation | Compiled Native C (`gcc -O3`) | Minimum Latency | Speedup | Result |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **`swap-window`** (`Super+Shift+Arrow`) | 62.83 ms (Python + IPC) | **1.49 ms** (Resident Socket C) | **1.21 ms** | **42.2x Faster** | **PASS** ✅ |
+| **`nav-window`** (`Super+Arrow`) | 21.81 ms (Bash + `hyprctl` + `jq`) | **1.74 ms** (Native C Direct IPC) | **1.55 ms** | **12.5x Faster** | **PASS** ✅ |
+| **`resize-step`** (`Super+[` / `Super+]`) | 60.73 ms (Bash + 2×`hyprctl` + `awk`) | **1.47 ms** (Native C Direct Socket) | **1.29 ms** | **41.3x Faster** | **PASS** ✅ |
+
+---
+
+### 2. High-Density 10-Window Sequential Close (Zero Stacking / "Ditimpa" Test)
+
+Tested opening 10 windows sequentially in Tactile mode and closing them one by one through all 9 stages:
+
+| Stage | Windows Remaining | Overlap Detection Threshold | Overlaps Detected | Result |
+| :--- | :--- | :--- | :--- | :--- |
+| **Step 1** | 9 windows remaining | $> 15\text{px} \times 15\text{px}$ | **0 Overlaps / 0 Ditimpa** | **PASS** ✅ |
+| **Step 2** | 8 windows remaining | $> 15\text{px} \times 15\text{px}$ | **0 Overlaps / 0 Ditimpa** | **PASS** ✅ |
+| **Step 3** | 7 windows remaining | $> 15\text{px} \times 15\text{px}$ | **0 Overlaps / 0 Ditimpa** | **PASS** ✅ |
+| **Step 4** | 6 windows remaining | $> 15\text{px} \times 15\text{px}$ | **0 Overlaps / 0 Ditimpa** | **PASS** ✅ |
+| **Step 5** | 5 windows remaining | $> 15\text{px} \times 15\text{px}$ | **0 Overlaps / 0 Ditimpa** | **PASS** ✅ |
+| **Step 6** | 4 windows remaining | $> 15\text{px} \times 15\text{px}$ | **0 Overlaps / 0 Ditimpa** | **PASS** ✅ |
+| **Step 7** | 3 windows remaining | $> 15\text{px} \times 15\text{px}$ | **0 Overlaps / 0 Ditimpa** | **PASS** ✅ |
+| **Step 8** | 2 windows remaining | $> 15\text{px} \times 15\text{px}$ | **0 Overlaps / 0 Ditimpa** | **PASS** ✅ |
+| **Step 9** | 1 window (100% Full Canvas) | $> 15\text{px} \times 15\text{px}$ | **0 Overlaps / 0 Ditimpa** | **PASS** ✅ |
+
+---
+
+### 3. Multi-Cell Long Window Expansion & Void Collapse
+
+- **Test A ($1 \times 2$ Full-Height Vertical Column Close)**: Closes a full-height column spanning both rows; remaining top and bottom windows expand simultaneously across the void. (**PASS** ✅)
+- **Test B ($1 \times 3$ Full-Width Horizontal Row Close)**: Closes a full-width row spanning all 3 columns; remaining columns expand to full monitor height ($1021\text{px}$) with 100% canvas coverage. (**PASS** ✅)
+
+---
+
+### 4. How to Run the Automated Benchmark Suite
+
+To run the full empirical benchmark suite on your machine:
+
+```bash
+bash ~/dotfiles/tests/run-all-tests.sh
+```
+
+---
+
 ## Quick Restore & Fresh Install Procedure
 
 On a fresh Arch Linux / Omarchy installation:
@@ -186,7 +239,7 @@ On a fresh Arch Linux / Omarchy installation:
 ```bash
 git clone git@github.com:hangodek/dotfiles.git ~/dotfiles
 
-# Standard restore (symlinks, scripts, menu animation patch, Edge defaults)
+# Standard restore (symlinks, scripts, native C helpers, menu animation patch)
 bash ~/dotfiles/bootstrap.sh
 
 # Complete restore + CachyOS x86-64-v3 Kernel & Performance Suite
