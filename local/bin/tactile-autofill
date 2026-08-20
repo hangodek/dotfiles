@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Tactile Universal Auto-Fill & Smart Auto-Collapse Engine
-Monitors Hyprland window creation and destruction events via socket2.
+Monitors Hyprland window creation, focus, and destruction events via socket2.
 
 Features:
 1. Standard Tiling Mode:
@@ -9,8 +9,9 @@ Features:
    does NOTHING, letting Hyprland do its native dwindle tiling.
 2. Tactile Floating Mode:
    - When a new window opens:
-     a) If there are unoccupied grid cells -> snaps new window into the unoccupied gap.
-     b) If grid is already full -> splits the active slot following Dwindle sequence (Right -> Bottom -> Right -> Bottom).
+     a) If there are unoccupied grid cells -> snaps new window into the unoccupied gap (RIGHT).
+     b) If grid is full -> splits the currently focused window following a strict,
+        guaranteed alternating sequence: Right -> Bottom -> Right -> Bottom -> Right.
    - When a window closes (Universal N-Window Sibling Collapse):
      a) Automatically detects the empty void left by the closed window.
      b) Expands the adjacent sibling window (Horizontal or Vertical) to fill the empty space.
@@ -26,6 +27,10 @@ import time
 
 # Cache of last known window geometries: { addr.lower(): (x, y, w, h, ws_id) }
 last_known_geometry = {}
+# Track currently focused window address
+last_focused_window_addr = None
+# Track previous split direction for each window: { addr.lower(): 'right' | 'bottom' }
+split_direction_history = {}
 
 
 def get_hypr_socket2():
@@ -60,6 +65,7 @@ def load_config():
 
 
 def get_active_clients_and_monitor():
+    global last_focused_window_addr
     try:
         clients = json.loads(subprocess.check_output(['hyprctl', 'clients', '-j'], text=True))
         monitors = json.loads(subprocess.check_output(['hyprctl', 'monitors', '-j'], text=True))
@@ -72,6 +78,8 @@ def get_active_clients_and_monitor():
                 size = c.get('size', [0, 0])
                 ws_id = c.get('workspace', {}).get('id')
                 last_known_geometry[addr] = (at[0], at[1], size[0], size[1], ws_id)
+            if c.get('focusHistoryID') == 0:
+                last_focused_window_addr = addr
 
         return clients, focused_mon
     except Exception:
@@ -169,6 +177,7 @@ def map_window_to_cells(win, mon, cfg):
 
 
 def autofill_new_window(new_addr, workspace_id_or_name):
+    global last_focused_window_addr, split_direction_history
     cfg = load_config()
     clients, mon = get_active_clients_and_monitor()
     if not mon:
@@ -231,7 +240,7 @@ def autofill_new_window(new_addr, workspace_id_or_name):
     row_weights = row_weights[:rows]
 
     # -------------------------------------------------------------
-    # CASE 1: Grid has unoccupied gaps -> Fill the gap
+    # CASE 1: Grid has unoccupied gaps -> Fill the gap (RIGHT)
     # -------------------------------------------------------------
     if len(occupied_cells) < total_cells:
         unoccupied = []
@@ -256,18 +265,46 @@ hyprctl dispatch "hl.dsp.window.resize({{ x = {target_w}, y = {target_h} }})"
 hyprctl dispatch "hl.dsp.window.move({{ x = {target_x}, y = {target_y} }})"
 '''
             subprocess.run(['bash', '-c', script], check=False)
+            last_focused_window_addr = new_addr.lower()
+            split_direction_history[new_addr.lower()] = 'right'
             return
 
     # -------------------------------------------------------------
-    # CASE 2: Grid is ALREADY FULL -> Natural Dwindle Split
+    # CASE 2: Grid is ALREADY FULL -> Alternating Dwindle Split
+    # Strict alternation: Right -> Bottom -> Right -> Bottom
     # -------------------------------------------------------------
-    target_win = max(floating_clients, key=lambda c: (c.get('size', [0, 0])[0] * c.get('size', [0, 0])[1]))
+    target_win = None
+    if last_focused_window_addr:
+        target_win = next((c for c in floating_clients if c.get('address', '').lower() == last_focused_window_addr.lower()), None)
+
+    if not target_win:
+        sorted_by_focus = sorted(floating_clients, key=lambda c: c.get('focusHistoryID', 999))
+        target_win = sorted_by_focus[0] if sorted_by_focus else floating_clients[-1]
+
     t_addr = target_win.get('address')
+    t_addr_lower = t_addr.lower()
     tx, ty = target_win.get('at', [0, 0])
     tw, th = target_win.get('size', [0, 0])
 
-    if th >= 800:
-        # Full height window: Split BOTTOM
+    # Determine split direction:
+    last_dir = split_direction_history.get(t_addr_lower)
+    if last_dir == 'right':
+        chosen_dir = 'bottom'
+    elif last_dir == 'bottom':
+        chosen_dir = 'right'
+    else:
+        # Fallback ratio analysis
+        if th >= 650:
+            chosen_dir = 'bottom'
+        elif tw >= 1000:
+            chosen_dir = 'right'
+        elif th >= 400:
+            chosen_dir = 'bottom'
+        else:
+            chosen_dir = 'right'
+
+    if chosen_dir == 'bottom':
+        # Split BOTTOM (Top half for target, Bottom half for new)
         h1 = (th - inner) // 2
         h2 = th - inner - h1
         y2 = ty + h1 + inner
@@ -283,9 +320,11 @@ hyprctl dispatch "hl.dsp.window.resize({{ x = {tw}, y = {h2} }})"
 hyprctl dispatch "hl.dsp.window.move({{ x = {tx}, y = {y2} }})"
 '''
         subprocess.run(['bash', '-c', script], check=False)
+        split_direction_history[t_addr_lower] = 'bottom'
+        split_direction_history[new_addr.lower()] = 'bottom'
 
     else:
-        # Half height window: Split RIGHT
+        # Split RIGHT (Left half for target, Right half for new)
         w1 = (tw - inner) // 2
         w2 = tw - inner - w1
         x2 = tx + w1 + inner
@@ -301,10 +340,15 @@ hyprctl dispatch "hl.dsp.window.resize({{ x = {w2}, y = {th} }})"
 hyprctl dispatch "hl.dsp.window.move({{ x = {x2}, y = {ty} }})"
 '''
         subprocess.run(['bash', '-c', script], check=False)
+        split_direction_history[t_addr_lower] = 'right'
+        split_direction_history[new_addr.lower()] = 'right'
+
+    last_focused_window_addr = new_addr.lower()
 
 
 def handle_window_closed(closed_addr):
     """Universal sibling expansion on window close for ANY number of windows."""
+    global split_direction_history
     cfg = load_config()
     clients, mon = get_active_clients_and_monitor()
     if not mon:
@@ -344,6 +388,7 @@ hyprctl dispatch "hl.dsp.window.resize({{ x = {canvas_w}, y = {canvas_h} }})"
 hyprctl dispatch "hl.dsp.window.move({{ x = {canvas_x}, y = {canvas_y} }})"
 '''
         subprocess.run(['bash', '-c', script], check=False)
+        split_direction_history[sole_addr.lower()] = 'right'
         return
 
     # 2. Universal Sibling Match using cached closed geometry
@@ -364,6 +409,7 @@ hyprctl dispatch "hl.dsp.window.resize({{ x = {new_w}, y = {wh} }})"
 hyprctl dispatch "hl.dsp.window.move({{ x = {wx}, y = {wy} }})"
 '''
                 subprocess.run(['bash', '-c', script], check=False)
+                split_direction_history[target_addr.lower()] = 'bottom'
                 return
 
         # Try Horizontal Right Neighbor (Right expands Left to cover closed window)
@@ -379,6 +425,7 @@ hyprctl dispatch "hl.dsp.window.resize({{ x = {new_w}, y = {wh} }})"
 hyprctl dispatch "hl.dsp.window.move({{ x = {xc}, y = {wy} }})"
 '''
                 subprocess.run(['bash', '-c', script], check=False)
+                split_direction_history[target_addr.lower()] = 'bottom'
                 return
 
         # Try Vertical Top Neighbor (Top expands Down to cover closed window)
@@ -394,6 +441,7 @@ hyprctl dispatch "hl.dsp.window.resize({{ x = {ww}, y = {new_h} }})"
 hyprctl dispatch "hl.dsp.window.move({{ x = {wx}, y = {wy} }})"
 '''
                 subprocess.run(['bash', '-c', script], check=False)
+                split_direction_history[target_addr.lower()] = 'right'
                 return
 
         # Try Vertical Bottom Neighbor (Bottom expands Up to cover closed window)
@@ -409,6 +457,7 @@ hyprctl dispatch "hl.dsp.window.resize({{ x = {ww}, y = {new_h} }})"
 hyprctl dispatch "hl.dsp.window.move({{ x = {wx}, y = {yc} }})"
 '''
                 subprocess.run(['bash', '-c', script], check=False)
+                split_direction_history[target_addr.lower()] = 'right'
                 return
 
     # 3. Fallback: If 2 windows remain and no direct sibling matched, rebalance across active weights
@@ -432,9 +481,12 @@ hyprctl dispatch "hl.dsp.window.resize({{ x = {w2_w}, y = {canvas_h} }})"
 hyprctl dispatch "hl.dsp.window.move({{ x = {w2_x}, y = {canvas_y} }})"
 '''
         subprocess.run(['bash', '-c', script], check=False)
+        split_direction_history[w1_addr.lower()] = 'right'
+        split_direction_history[w2_addr.lower()] = 'right'
 
 
 def run_daemon():
+    global last_focused_window_addr
     sock_path = get_hypr_socket2()
     if not sock_path:
         print("Hyprland socket2 not found.", file=sys.stderr)
@@ -458,7 +510,12 @@ def run_daemon():
             buffer += data
             while "\n" in buffer:
                 line, buffer = buffer.split("\n", 1)
-                if line.startswith("openwindow>>"):
+                if line.startswith("activewindowv2>>"):
+                    payload = line[len("activewindowv2>>"):].strip()
+                    if payload and payload != "0" and payload != "0x0":
+                        addr = "0x" + payload.lstrip("0x")
+                        last_focused_window_addr = addr.lower()
+                elif line.startswith("openwindow>>"):
                     payload = line[len("openwindow>>"):]
                     parts = payload.split(",")
                     if len(parts) >= 2:
