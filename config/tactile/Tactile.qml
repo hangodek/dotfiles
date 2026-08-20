@@ -22,6 +22,7 @@ PanelWindow {
     property var stateData: {
         "window": {},
         "monitor": {},
+        "clients": [],
         "config": {
             "gaps": { "outer": 12, "inner": 8, "top_bar": 35 },
             "grid": { "rows": 2, "cols": 3, "keys": [["q", "w", "e"], ["a", "s", "d"]] }
@@ -130,6 +131,59 @@ PanelWindow {
         script += "hyprctl dispatch \"hl.dsp.window.float({ action = 'on' })\"\n";
         script += "hyprctl dispatch \"hl.dsp.window.resize({ x = " + targetW + ", y = " + targetH + " })\"\n";
         script += "hyprctl dispatch \"hl.dsp.window.move({ x = " + targetX + ", y = " + targetY + " })\"\n";
+
+        // Find other windows on this workspace to rearrange into unoccupied space
+        var clients = root.stateData.clients || [];
+        var targetWs = (win.workspace && win.workspace.name) || "";
+        var otherClients = clients.filter(function(c) {
+            return c.address !== addr && (c.workspace && c.workspace.name === targetWs) && !c.hidden && c.mapped;
+        });
+
+        // Determine unoccupied cells
+        var occupied = {};
+        for (var r = minR; r <= maxR; r++) {
+            for (var c = minC; c <= maxC; c++) {
+                occupied[r + "," + c] = true;
+            }
+        }
+
+        var unoccupied = [];
+        for (var r = 0; r < rows; r++) {
+            for (var c = 0; c < cols; c++) {
+                if (!occupied[r + "," + c]) {
+                    unoccupied.push([r, c]);
+                }
+            }
+        }
+
+        if (otherClients.length > 0 && unoccupied.length > 0) {
+            var oMinR = rows, oMaxR = 0, oMinC = cols, oMaxC = 0;
+            for (var i = 0; i < unoccupied.length; i++) {
+                var ur = unoccupied[i][0], uc = unoccupied[i][1];
+                if (ur < oMinR) oMinR = ur;
+                if (ur > oMaxR) oMaxR = ur;
+                if (uc < oMinC) oMinC = uc;
+                if (uc > oMaxC) oMaxC = uc;
+            }
+
+            var oTargetX = Math.floor(canvasX + oMinC * (cellW + inner));
+            var oTargetY = Math.floor(canvasY + oMinR * (cellH + inner));
+            var oSpanCols = (oMaxC - oMinC + 1);
+            var oSpanRows = (oMaxR - oMinR + 1);
+            var oTargetW = Math.floor(oSpanCols * cellW + (oSpanCols - 1) * inner);
+            var oTargetH = Math.floor(oSpanRows * cellH + (oSpanRows - 1) * inner);
+
+            for (var j = 0; j < otherClients.length; j++) {
+                var oAddr = otherClients[j].address;
+                script += "hyprctl dispatch \"hl.dsp.window.fullscreen({ action = 'unset' })\"\n";
+                script += "hyprctl dispatch \"hl.dsp.focus({ window = 'address:" + oAddr + "' })\"\n";
+                script += "hyprctl dispatch \"hl.dsp.window.float({ action = 'on' })\"\n";
+                script += "hyprctl dispatch \"hl.dsp.window.resize({ x = " + oTargetW + ", y = " + oTargetH + " })\"\n";
+                script += "hyprctl dispatch \"hl.dsp.window.move({ x = " + oTargetX + ", y = " + oTargetY + " })\"\n";
+            }
+            // Return focus to active window
+            script += "hyprctl dispatch \"hl.dsp.focus({ window = 'address:" + addr + "' })\"\n";
+        }
 
         Quickshell.execDetached(["bash", "-c", script]);
         root.quitOverlay();

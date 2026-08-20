@@ -4,7 +4,13 @@
 
 set -euo pipefail
 
-# 1. Capture current active window & monitor before overlay launches
+# 0. Ensure tactile-autofill daemon is running in background
+if ! pgrep -f "tactile-autofill" >/dev/null 2>&1; then
+  tactile-autofill >/dev/null 2>&1 &
+  disown
+fi
+
+# 1. Capture current active window, monitor & all clients
 active_win=$(hyprctl activewindow -j 2>/dev/null || true)
 if [[ -z "$active_win" || "$active_win" == "{}" || "$active_win" == "null" ]]; then
   echo "Tactile: No active window found to snap." >&2
@@ -16,6 +22,8 @@ focused_mon=$(echo "$monitors" | jq -r '.[] | select(.focused == true)' 2>/dev/n
 if [[ -z "$focused_mon" || "$focused_mon" == "null" ]]; then
   focused_mon=$(echo "$monitors" | jq -r '.[0]' 2>/dev/null || true)
 fi
+
+clients=$(hyprctl clients -j 2>/dev/null || echo "[]")
 
 # 2. Read user config if present
 config_file="$HOME/.config/tactile/config.json"
@@ -29,12 +37,13 @@ else
   user_config='{"gaps":{"outer":12,"inner":8,"top_bar":35},"grid":{"rows":2,"cols":3,"keys":[["q","w","e"],["a","s","d"]]}}'
 fi
 
-# 3. Create state JSON
+# 3. Create state JSON with active window, monitor & workspace clients
 state_json=$(jq -n \
   --argjson win "$active_win" \
   --argjson mon "$focused_mon" \
+  --argjson cls "$clients" \
   --argjson cfg "$user_config" \
-  '{window: $win, monitor: $mon, config: $cfg}')
+  '{window: $win, monitor: $mon, clients: $cls, config: $cfg}')
 
 # 4. Find Tactile.qml location
 qml_file="$HOME/dotfiles/config/tactile/Tactile.qml"

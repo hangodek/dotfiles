@@ -74,6 +74,7 @@
         ├── omarchy-agent        # Default agent dispatcher with agy floating TUI support
         ├── omarchy-default-agent# Agent switcher supporting Antigravity (agy)
         ├── tactile              # Interactive 2x3 Grid HUD (Super+T) for 2-key bounding-box snapping
+        ├── tactile-autofill     # Background daemon auto-filling unoccupied grid gaps on new window open
         ├── scratchpad-deck      # Independent multi-deck floating workspace engine
         ├── nav-window           # Smooth 2D workspace & scratchpad tile navigator
         ├── resize-step          # 10% incremental window resizing helper
