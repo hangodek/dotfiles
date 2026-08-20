@@ -74,7 +74,6 @@
         ├── omarchy-agent        # Default agent dispatcher with agy floating TUI support
         ├── omarchy-default-agent# Agent switcher supporting Antigravity (agy)
         ├── nav-window           # Compiled C 2D workspace & scratchpad tile navigator (1.74ms)
-        ├── resize-step          # Compiled C 10% incremental window resizing helper (1.47ms)
         ├── scratchpad-deck      # Independent multi-deck floating workspace engine
         └── powerprofilesctl     # Native DBus wrapper for instant 1-click power profiles
 ```

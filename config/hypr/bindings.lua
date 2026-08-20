@@ -28,9 +28,6 @@
 -- o.bind("SUPER + H", nil, "voxtype record toggle")
 -- o.bind("SUPER + PERIOD", nil, "omarchy-shell shell toggle omarchy.emojis")
 
--- Step-resize focused window by 10% of monitor width per press
-o.bind("SUPER + BRACKETRIGHT", "Expand window width (10%)", "resize-step expand")
-o.bind("SUPER + BRACKETLEFT", "Shrink window width (10%)", "resize-step shrink")
 
 -- Multi-Deck Scratchpad controls
 hl.unbind("SUPER + O")
