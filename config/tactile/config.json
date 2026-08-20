@@ -1,0 +1,17 @@
+{
+  "grid": {
+    "rows": 2,
+    "cols": 3,
+    "keys": [
+      ["q", "w", "e"],
+      ["a", "s", "d"]
+    ]
+  },
+  "gaps": {
+    "outer": 12,
+    "inner": 8,
+    "top_bar": 35
+  },
+  "col_weights": [1.0, 1.0, 1.0],
+  "row_weights": [1.0, 1.0]
+}

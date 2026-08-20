@@ -60,4 +60,9 @@ o.bind("SUPER + DOWN", "Focus down / next scratchpad deck", "nav-window down")
 -- Original DHH pinned pop-out (sticky across all workspaces + always on top for PiP)
 o.bind("SUPER + SHIFT + O", "Pop window out (float & pin)", "omarchy-hyprland-window-pop")
 
+-- Tactile interactive 2x3 Grid Snapper (Q W E / A S D)
+hl.unbind("SUPER + T")
+o.bind("SUPER + T", "Tactile window grid overlay", "tactile")
+o.bind("SUPER + SHIFT + T", "Toggle window floating/tiling", hl.dsp.window.float({ action = "toggle" }))
+
 

@@ -1,0 +1,47 @@
+#!/bin/bash
+# Tactile: Interactive 2x3 Grid Window Snapper for Hyprland
+# Spawns a true Wayland Layer 3 Overlay (on top of all open windows)
+
+set -euo pipefail
+
+# 1. Capture current active window & monitor before overlay launches
+active_win=$(hyprctl activewindow -j 2>/dev/null || true)
+if [[ -z "$active_win" || "$active_win" == "{}" || "$active_win" == "null" ]]; then
+  echo "Tactile: No active window found to snap." >&2
+  exit 0
+fi
+
+monitors=$(hyprctl monitors -j 2>/dev/null || true)
+focused_mon=$(echo "$monitors" | jq -r '.[] | select(.focused == true)' 2>/dev/null || true)
+if [[ -z "$focused_mon" || "$focused_mon" == "null" ]]; then
+  focused_mon=$(echo "$monitors" | jq -r '.[0]' 2>/dev/null || true)
+fi
+
+# 2. Read user config if present
+config_file="$HOME/.config/tactile/config.json"
+if [[ ! -f "$config_file" ]]; then
+  config_file="$HOME/dotfiles/config/tactile/config.json"
+fi
+
+if [[ -f "$config_file" ]]; then
+  user_config=$(cat "$config_file")
+else
+  user_config='{"gaps":{"outer":12,"inner":8,"top_bar":35},"grid":{"rows":2,"cols":3,"keys":[["q","w","e"],["a","s","d"]]}}'
+fi
+
+# 3. Create state JSON
+state_json=$(jq -n \
+  --argjson win "$active_win" \
+  --argjson mon "$focused_mon" \
+  --argjson cfg "$user_config" \
+  '{window: $win, monitor: $mon, config: $cfg}')
+
+# 4. Find Tactile.qml location
+qml_file="$HOME/dotfiles/config/tactile/Tactile.qml"
+if [[ ! -f "$qml_file" ]]; then
+  qml_file="$HOME/.config/tactile/Tactile.qml"
+fi
+
+# 5. Launch native Wayland Layer 3 Overlay with direct state JSON
+export TACTILE_STATE_JSON="$state_json"
+exec quickshell -p "$qml_file"

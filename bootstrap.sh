@@ -57,6 +57,13 @@ if [[ -f "$DOTFILES/config/starship.toml" ]]; then
   echo "    linked starship.toml"
 fi
 
+if [[ -d "$DOTFILES/config/tactile" ]]; then
+  mkdir -p "$HOME/.config/tactile"
+  ln -sf "$DOTFILES/config/tactile/config.json" "$HOME/.config/tactile/config.json"
+  ln -sf "$DOTFILES/config/tactile/Tactile.qml" "$HOME/.config/tactile/Tactile.qml"
+  echo "    linked tactile/config.json & Tactile.qml"
+fi
+
 if [[ -f "$DOTFILES/config/git/config" ]]; then
   mkdir -p "$HOME/.config/git"
   ln -sf "$DOTFILES/config/git/config" "$HOME/.config/git/config"

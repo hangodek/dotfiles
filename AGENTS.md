@@ -73,6 +73,7 @@
         ├── agyd                 # Auto-permission wrapper for Google Antigravity CLI
         ├── omarchy-agent        # Default agent dispatcher with agy floating TUI support
         ├── omarchy-default-agent# Agent switcher supporting Antigravity (agy)
+        ├── tactile              # Interactive 2x3 Grid HUD (Super+T) for 2-key bounding-box snapping
         ├── scratchpad-deck      # Independent multi-deck floating workspace engine
         ├── nav-window           # Smooth 2D workspace & scratchpad tile navigator
         ├── resize-step          # 10% incremental window resizing helper
@@ -134,6 +135,25 @@
   - When `Super + Space` is pressed, the menu card smoothly zooms (`scale: 0.96 ➔ 1.00`) and fades (`opacity: 0.0 ➔ 1.0`) in **150–160 ms** with `Easing.OutCubic`.
   - Closing fades and shrinks smoothly with immediate keyboard release.
   - To apply edits to QML files, always run `omarchy restart shell`.
+
+---
+
+### E. Tactile Grid HUD & Bounding-Box Snapping (`Super + T`)
+- **Concept**: An on-screen interactive 2-row × 3-column overlay (`Q W E / A S D`) inspired by GNOME Tactile.
+- **Behavior**:
+  - `Super + T`: Triggers the GTK4 LayerShell grid HUD.
+  - Pressing two keys (e.g. `Q` then `D`) snaps the focused window/terminal to the bounding box spanning between those two tiles:
+    - `Q + D`: Full Screen canvas.
+    - `Q + A`: Left 1/3 full-height column.
+    - `Q + S`: Left 2/3 full-height column.
+    - `W + D`: Right 2/3 full-height column.
+    - `E + D`: Right 1/3 full-height column.
+    - `Q + E`: Top half strip.
+    - `A + D`: Bottom half strip.
+    - `Q + Q` (or `Q + Enter`): Single tile Top-Left 1/3.
+    - `Esc`: Cancels overlay with 0 changes.
+- **Config**: `~/dotfiles/config/tactile/config.json` controls outer gaps (12px), inner gaps (8px), and top bar offset (35px).
+- **Engine Script**: `~/dotfiles/local/bin/tactile`.
 
 ---
 
