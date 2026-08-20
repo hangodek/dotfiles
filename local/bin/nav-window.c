@@ -51,18 +51,22 @@ static int send_hypr_cmd(const char *cmd, char *response_buf, size_t buf_size) {
 int main(int argc, char *argv[]) {
     const char *dir = (argc > 1) ? argv[1] : "left";
 
-    // Query active window JSON
-    char buf[4096];
-    if (send_hypr_cmd("j/activewindow", buf, sizeof(buf)) != 0 || strlen(buf) == 0) {
-        return 0;
+    // 1. Query active window JSON
+    char buf[8192];
+    const char *deck_tag = NULL;
+    if (send_hypr_cmd("j/activewindow", buf, sizeof(buf)) == 0 && strlen(buf) > 0) {
+        deck_tag = strstr(buf, "special:");
     }
 
-    // Check if on special scratchpad deck (e.g. special:deck_1, special:deck_2)
-    const char *deck_tag = strstr(buf, "\"name\":\"special:deck_");
+    // 2. If active window didn't have a special workspace, check if a special workspace is visible on the monitor
     if (!deck_tag) {
-        deck_tag = strstr(buf, "\"name\":\"special:center\"");
+        char mon_buf[8192];
+        if (send_hypr_cmd("j/monitors", mon_buf, sizeof(mon_buf)) == 0 && strlen(mon_buf) > 0) {
+            deck_tag = strstr(mon_buf, "special:");
+        }
     }
 
+    // 3. Scratchpad Deck Navigation Mode
     if (deck_tag) {
         if (strcmp(dir, "up") == 0 || strcmp(dir, "u") == 0) {
             execlp("scratchpad-deck", "scratchpad-deck", "prev", NULL);
@@ -79,7 +83,7 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    // Standard main workspace directional focus
+    // 4. Standard main workspace directional focus
     char cmd[128];
     char hl_dir = 'l';
     if (strcmp(dir, "right") == 0 || strcmp(dir, "r") == 0) hl_dir = 'r';
