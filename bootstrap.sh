@@ -64,6 +64,12 @@ if [[ -f "$DOTFILES/config/bash/aliases.sh" ]]; then
   fi
 fi
 
+if [[ -f "$DOTFILES/config/chromium/flags.conf" ]]; then
+  ln -sf "$DOTFILES/config/chromium/flags.conf" "$HOME/.config/microsoft-edge-stable-flags.conf"
+  ln -sf "$DOTFILES/config/chromium/flags.conf" "$HOME/.config/chromium-flags.conf"
+  echo "    linked Wayland flags for Microsoft Edge & Chromium"
+fi
+
 echo "--> Compiling high-performance native helpers..."
 for src_c in "$DOTFILES/local/bin/"*.c; do
   if [[ -f "$src_c" ]]; then
