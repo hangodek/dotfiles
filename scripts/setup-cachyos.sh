@@ -89,11 +89,11 @@ EOF
 sysctl -p /etc/sysctl.d/99-bbr.conf >/dev/null 2>&1 || true
 
 echo "==> [5/6] Setting CachyOS as the default boot entry in Limine..."
-mkdir -p /etc/limine-entry-tool.d
-cat > /etc/limine-entry-tool.d/99-cachyos-boot.conf << 'EOF'
-# Prioritize CachyOS kernel as the default boot entry
-BOOT_ORDER="*cachyos*, *, *fallback, Snapshots"
-EOF
+if grep -q '^BOOT_ORDER=' /etc/default/limine 2>/dev/null; then
+  sed -i 's|^BOOT_ORDER=.*|BOOT_ORDER="*cachyos*, *, *fallback, Snapshots"|' /etc/default/limine
+else
+  echo 'BOOT_ORDER="*cachyos*, *, *fallback, Snapshots"' >> /etc/default/limine
+fi
 limine-snapper-sync 2>/dev/null || limine-entry-tool 2>/dev/null || true
 
 echo "==> [6/6] Verifying Limine UKI kernel generation..."

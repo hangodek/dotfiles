@@ -7,11 +7,11 @@
 
 set -euo pipefail
 
-CONF_FILE="/etc/limine-entry-tool.d/99-cachyos-boot.conf"
+DEFAULT_LIMINE="/etc/default/limine"
 STATE_FILE="$HOME/.config/omarchy/defaults/kernel"
 
 get_current() {
-  if [[ -f "$CONF_FILE" ]] && grep -q "\*cachyos\*" "$CONF_FILE" 2>/dev/null; then
+  if [[ -f "$DEFAULT_LIMINE" ]] && grep -q 'BOOT_ORDER=".*cachyos' "$DEFAULT_LIMINE" 2>/dev/null; then
     echo "cachyos"
   elif [[ -f "$STATE_FILE" ]]; then
     cat "$STATE_FILE"
@@ -28,24 +28,36 @@ fi
 target="$1"
 mkdir -p "$(dirname "$STATE_FILE")"
 
+set_boot_order() {
+  local order="$1"
+  if sudo grep -q '^BOOT_ORDER=' "$DEFAULT_LIMINE" 2>/dev/null; then
+    sudo sed -i "s|^BOOT_ORDER=.*|BOOT_ORDER=\"$order\"|" "$DEFAULT_LIMINE"
+  else
+    echo "BOOT_ORDER=\"$order\"" | sudo tee -a "$DEFAULT_LIMINE" >/dev/null
+  fi
+}
+
 case "$target" in
   cachyos)
-    echo 'BOOT_ORDER="*cachyos*, *, *fallback, Snapshots"' | sudo tee "$CONF_FILE" >/dev/null
+    echo "Configuring Limine bootloader for CachyOS (BORE)..."
+    set_boot_order "*cachyos*, *, *fallback, Snapshots"
     echo "cachyos" > "$STATE_FILE"
-    sudo limine-snapper-sync 2>/dev/null || sudo limine-entry-tool 2>/dev/null || true
-    echo "Default boot kernel set to: CachyOS (BORE)"
+    sudo limine-snapper-sync || sudo omarchy-refresh-limine || true
+    echo "Successfully set CachyOS (BORE) as the first default boot option in Limine."
     ;;
   stock | default)
-    echo 'BOOT_ORDER="*linux.efi*, *cachyos*, *fallback, Snapshots"' | sudo tee "$CONF_FILE" >/dev/null
+    echo "Configuring Limine bootloader for Stock Arch Linux..."
+    set_boot_order "*linux.efi*, *cachyos*, *fallback, Snapshots"
     echo "stock" > "$STATE_FILE"
-    sudo limine-snapper-sync 2>/dev/null || sudo limine-entry-tool 2>/dev/null || true
-    echo "Default boot kernel set to: Arch Linux (Stock)"
+    sudo limine-snapper-sync || sudo omarchy-refresh-limine || true
+    echo "Successfully set Stock Arch Linux as the first default boot option in Limine."
     ;;
   lts)
-    echo 'BOOT_ORDER="*lts*, *, *fallback, Snapshots"' | sudo tee "$CONF_FILE" >/dev/null
+    echo "Configuring Limine bootloader for LTS Linux..."
+    set_boot_order "*lts*, *, *fallback, Snapshots"
     echo "lts" > "$STATE_FILE"
-    sudo limine-snapper-sync 2>/dev/null || sudo limine-entry-tool 2>/dev/null || true
-    echo "Default boot kernel set to: Arch Linux (LTS)"
+    sudo limine-snapper-sync || sudo omarchy-refresh-limine || true
+    echo "Successfully set Arch Linux (LTS) as the first default boot option in Limine."
     ;;
   *)
     echo "Unknown kernel target: $target" >&2
