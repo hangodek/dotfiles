@@ -47,6 +47,7 @@ Personal dotfiles, native helper utilities, and system optimizations for Arch Li
 └── local/bin/
     ├── nav-window               # Compiled C 2D navigator
     ├── scratchpad-deck          # Multi-deck scratchpad engine
+    ├── omarchy-default-kernel   # Default boot kernel selector & Limine configurator
     ├── agyd                     # Script wrapper for agy permissions
     └── powerprofilesctl         # DBus power profile wrapper
 ```

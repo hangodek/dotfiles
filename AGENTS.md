@@ -58,6 +58,7 @@
         ├── agyd                 # Auto-permission wrapper for Antigravity CLI
         ├── omarchy-agent        # Default agent dispatcher
         ├── omarchy-default-agent# Agent switcher
+        ├── omarchy-default-kernel# Default boot kernel switcher and Limine configurator
         ├── nav-window           # Compiled C 2D workspace & scratchpad navigator
         ├── scratchpad-deck      # Independent multi-deck floating workspace engine
         └── powerprofilesctl     # Native DBus wrapper for 1-click power profiles

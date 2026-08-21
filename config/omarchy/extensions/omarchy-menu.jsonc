@@ -10,5 +10,24 @@
     "label": "Antigravity CLI",
     "when": "! omarchy-cmd-present agy",
     "action": "omarchy-launch-floating-terminal-with-presentation 'curl -fsSL https://antigravity.google.com/install.sh | bash'"
+  },
+  "setup.default.kernel": {
+    "icon": "󰌽",
+    "label": "Kernel",
+    "title": "Default Boot Kernel"
+  },
+  "setup.default.kernel.cachyos": {
+    "icon": "󰌽",
+    "label": "CachyOS (BORE)",
+    "when": "omarchy-pkg-present linux-cachyos",
+    "checked": "[[ \"$(omarchy-default-kernel)\" == \"cachyos\" ]]",
+    "action": "omarchy-launch-floating-terminal-with-presentation 'omarchy-default-kernel cachyos'"
+  },
+  "setup.default.kernel.stock": {
+    "icon": "󰌽",
+    "label": "Arch Linux (Stock)",
+    "when": "omarchy-pkg-present linux",
+    "checked": "[[ \"$(omarchy-default-kernel)\" == \"stock\" ]]",
+    "action": "omarchy-launch-floating-terminal-with-presentation 'omarchy-default-kernel stock'"
   }
 }

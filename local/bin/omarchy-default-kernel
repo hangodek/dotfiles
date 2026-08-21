@@ -1,0 +1,55 @@
+#!/bin/bash
+# Query or configure the default boot kernel in Omarchy & Limine Bootloader
+# Usage:
+#   omarchy-default-kernel          # Prints active default kernel (e.g. cachyos, stock)
+#   omarchy-default-kernel cachyos  # Sets CachyOS (BORE) as default boot kernel
+#   omarchy-default-kernel stock    # Sets Stock Arch Linux as default boot kernel
+
+set -euo pipefail
+
+CONF_FILE="/etc/limine-entry-tool.d/99-cachyos-boot.conf"
+STATE_FILE="$HOME/.config/omarchy/defaults/kernel"
+
+get_current() {
+  if [[ -f "$CONF_FILE" ]] && grep -q "\*cachyos\*" "$CONF_FILE" 2>/dev/null; then
+    echo "cachyos"
+  elif [[ -f "$STATE_FILE" ]]; then
+    cat "$STATE_FILE"
+  else
+    echo "stock"
+  fi
+}
+
+if [[ $# -eq 0 ]]; then
+  get_current
+  exit 0
+fi
+
+target="$1"
+mkdir -p "$(dirname "$STATE_FILE")"
+
+case "$target" in
+  cachyos)
+    echo 'BOOT_ORDER="*cachyos*, *, *fallback, Snapshots"' | sudo tee "$CONF_FILE" >/dev/null
+    echo "cachyos" > "$STATE_FILE"
+    sudo limine-snapper-sync 2>/dev/null || sudo limine-entry-tool 2>/dev/null || true
+    echo "Default boot kernel set to: CachyOS (BORE)"
+    ;;
+  stock | default)
+    echo 'BOOT_ORDER="*linux.efi*, *cachyos*, *fallback, Snapshots"' | sudo tee "$CONF_FILE" >/dev/null
+    echo "stock" > "$STATE_FILE"
+    sudo limine-snapper-sync 2>/dev/null || sudo limine-entry-tool 2>/dev/null || true
+    echo "Default boot kernel set to: Arch Linux (Stock)"
+    ;;
+  lts)
+    echo 'BOOT_ORDER="*lts*, *, *fallback, Snapshots"' | sudo tee "$CONF_FILE" >/dev/null
+    echo "lts" > "$STATE_FILE"
+    sudo limine-snapper-sync 2>/dev/null || sudo limine-entry-tool 2>/dev/null || true
+    echo "Default boot kernel set to: Arch Linux (LTS)"
+    ;;
+  *)
+    echo "Unknown kernel target: $target" >&2
+    echo "Usage: $0 [cachyos|stock|lts]" >&2
+    exit 1
+    ;;
+esac
