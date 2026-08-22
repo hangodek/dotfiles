@@ -64,10 +64,14 @@ if [[ -f "$DOTFILES/config/bash/aliases.sh" ]]; then
   fi
 fi
 
-if [[ -f "$DOTFILES/config/chromium/flags.conf" ]]; then
-  ln -sf "$DOTFILES/config/chromium/flags.conf" "$HOME/.config/microsoft-edge-stable-flags.conf"
-  ln -sf "$DOTFILES/config/chromium/flags.conf" "$HOME/.config/chromium-flags.conf"
-  echo "    linked Wayland flags for Microsoft Edge & Chromium"
+if [[ -d "$DOTFILES/config/environment.d" ]]; then
+  mkdir -p "$HOME/.config/environment.d"
+  for env_file in "$DOTFILES/config/environment.d/"*.conf; do
+    if [[ -f "$env_file" ]]; then
+      ln -sf "$env_file" "$HOME/.config/environment.d/$(basename "$env_file")"
+      echo "    linked $(basename "$env_file")"
+    fi
+  done
 fi
 
 echo "--> Compiling high-performance native helpers..."

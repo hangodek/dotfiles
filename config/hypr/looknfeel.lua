@@ -120,10 +120,5 @@ o.window({ title = "(Open File|Open Folder|Save File|Save As|Select a File|Choos
   tag = "+floating-window",
 })
 
--- Prevent Microsoft Edge and Chromium from randomly hijacking fullscreen or flickering over the navbar
-o.window({ class = "^(microsoft-edge.*|chromium.*)$" }, {
-  suppress_event = "maximize fullscreen",
-})
-
 
 
