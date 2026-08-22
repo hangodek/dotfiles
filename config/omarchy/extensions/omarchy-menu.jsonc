@@ -29,5 +29,10 @@
     "when": "omarchy-pkg-present linux",
     "checked": "[[ \"$(omarchy-default-kernel)\" == \"stock\" ]]",
     "action": "omarchy-launch-floating-terminal-with-presentation 'omarchy-default-kernel stock'"
+  },
+  "setup.battery-boost": {
+    "icon": "",
+    "label": "Unlock Battery Turbo Boost (RyzenAdj)",
+    "action": "omarchy-launch-floating-terminal-with-presentation 'sudo bash $HOME/dotfiles/scripts/setup-ryzenadj.sh'"
   }
 }

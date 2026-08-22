@@ -36,6 +36,7 @@
 ├── README.md                    # Human-readable documentation and hardware details
 ├── scripts/
 │   ├── setup-cachyos.sh         # CachyOS kernel, headers, sysctl, and rtkit installer
+│   ├── setup-ryzenadj.sh        # AMD Ryzen Mobile 25W-30W battery boost unlocker
 │   └── patch-smooth-menu.sh     # Spotlight zoom & fade animation patch for Super+Space
 ├── config/
 │   ├── hypr/

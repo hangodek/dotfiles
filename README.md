@@ -37,6 +37,7 @@ Personal dotfiles, native helper utilities, and system optimizations for Arch Li
 ├── README.md                    # Documentation and keybindings
 ├── scripts/
 │   ├── setup-cachyos.sh         # Optional CachyOS kernel and sysctl installer
+│   ├── setup-ryzenadj.sh        # AMD Ryzen Mobile 25W-30W battery boost unlocker
 │   └── patch-smooth-menu.sh     # Spotlight animation patch for Super+Space
 ├── config/
 │   ├── hypr/                    # Hyprland bindings, looknfeel, input, autostart
