@@ -1,4 +1,10 @@
 {
+  "trigger.download": {
+    "icon": "",
+    "label": "Download (Turbo Downloader)",
+    "aliases": ["download", "aria2", "ytdl", "youtube", "music", "fetch", "get"],
+    "action": "omarchy-launch-floating-terminal-with-presentation omarchy-download"
+  },
   "setup.default.agent.agy": {
     "icon": "󱚤",
     "label": "Antigravity (agy)",
