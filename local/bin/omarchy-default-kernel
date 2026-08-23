@@ -7,16 +7,18 @@
 
 set -euo pipefail
 
-DEFAULT_LIMINE="/etc/default/limine"
 STATE_FILE="$HOME/.config/omarchy/defaults/kernel"
+SYSTEM_STATE_FILE="/etc/omarchy/default-kernel"
+POST_HOOK="/etc/boot/hooks/post.d/95-preserve-default-kernel.sh"
+LIMINE_CONF="/boot/limine.conf"
 
 get_current() {
-  if [[ -f "$DEFAULT_LIMINE" ]] && grep -q 'BOOT_ORDER=".*cachyos' "$DEFAULT_LIMINE" 2>/dev/null; then
-    echo "cachyos"
-  elif [[ -f "$STATE_FILE" ]]; then
+  if [[ -f "$STATE_FILE" ]]; then
     cat "$STATE_FILE"
+  elif [[ -f "$SYSTEM_STATE_FILE" ]]; then
+    cat "$SYSTEM_STATE_FILE"
   else
-    echo "stock"
+    echo "cachyos"
   fi
 }
 
@@ -28,36 +30,92 @@ fi
 target="$1"
 mkdir -p "$(dirname "$STATE_FILE")"
 
-set_boot_order() {
-  local order="$1"
-  if sudo grep -q '^BOOT_ORDER=' "$DEFAULT_LIMINE" 2>/dev/null; then
-    sudo sed -i "s|^BOOT_ORDER=.*|BOOT_ORDER=\"$order\"|" "$DEFAULT_LIMINE"
-  else
-    echo "BOOT_ORDER=\"$order\"" | sudo tee -a "$DEFAULT_LIMINE" >/dev/null
+apply_default_to_limine() {
+  local kernel_name="$1"
+  local target_pattern=""
+
+  case "$kernel_name" in
+    cachyos)
+      target_pattern="//linux-cachyos"
+      ;;
+    stock | default)
+      target_pattern="//linux"
+      ;;
+    lts)
+      target_pattern="//linux-lts"
+      ;;
+    *)
+      echo "Unknown kernel: $kernel_name" >&2
+      return 1
+      ;;
+  esac
+
+  if [[ ! -f "$LIMINE_CONF" ]]; then
+    return 0
   fi
+
+  # Calculate 1-based entry index in limine.conf
+  local entry_idx
+  entry_idx=$(grep -E '^\s*(\/\+|\/\/)' "$LIMINE_CONF" | grep -n "$target_pattern" | head -n 1 | cut -d: -f1 || true)
+
+  if [[ -n "$entry_idx" ]]; then
+    sudo sed -i "s/^default_entry:.*/default_entry: $entry_idx/" "$LIMINE_CONF"
+    echo "Limine default_entry set to $entry_idx ($target_pattern)"
+  fi
+}
+
+install_post_hook() {
+  sudo mkdir -p /etc/omarchy /etc/boot/hooks/post.d
+  echo "$target" | sudo tee "$SYSTEM_STATE_FILE" >/dev/null
+
+  cat << 'HOOK_EOF' | sudo tee "$POST_HOOK" >/dev/null
+#!/bin/bash
+# Automatically maintain default boot kernel in /boot/limine.conf after updates
+set -euo pipefail
+
+LIMINE_CONF="/boot/limine.conf"
+SYSTEM_STATE_FILE="/etc/omarchy/default-kernel"
+
+if [[ ! -f "$LIMINE_CONF" || ! -f "$SYSTEM_STATE_FILE" ]]; then
+  exit 0
+fi
+
+target=$(cat "$SYSTEM_STATE_FILE" 2>/dev/null || echo "cachyos")
+pattern=""
+
+case "$target" in
+  cachyos) pattern="//linux-cachyos" ;;
+  stock|default) pattern="//linux" ;;
+  lts) pattern="//linux-lts" ;;
+  *) pattern="//linux-cachyos" ;;
+esac
+
+entry_idx=$(grep -E '^\s*(\/\+|\/\/)' "$LIMINE_CONF" | grep -n "$pattern" | head -n 1 | cut -d: -f1 || true)
+if [[ -n "$entry_idx" ]]; then
+  sed -i "s/^default_entry:.*/default_entry: $entry_idx/" "$LIMINE_CONF"
+fi
+HOOK_EOF
+  sudo chmod +x "$POST_HOOK"
 }
 
 case "$target" in
   cachyos)
-    echo "Configuring Limine bootloader for CachyOS (BORE)..."
-    set_boot_order "*cachyos*, *, *fallback, Snapshots"
     echo "cachyos" > "$STATE_FILE"
-    sudo limine-snapper-sync || sudo omarchy-refresh-limine || true
-    echo "Successfully set CachyOS (BORE) as the first default boot option in Limine."
+    install_post_hook
+    apply_default_to_limine cachyos
+    echo "Default boot kernel set to: CachyOS (BORE) [Persistent across all updates]"
     ;;
   stock | default)
-    echo "Configuring Limine bootloader for Stock Arch Linux..."
-    set_boot_order "*linux.efi*, *cachyos*, *fallback, Snapshots"
     echo "stock" > "$STATE_FILE"
-    sudo limine-snapper-sync || sudo omarchy-refresh-limine || true
-    echo "Successfully set Stock Arch Linux as the first default boot option in Limine."
+    install_post_hook
+    apply_default_to_limine stock
+    echo "Default boot kernel set to: Arch Linux (Stock) [Persistent across all updates]"
     ;;
   lts)
-    echo "Configuring Limine bootloader for LTS Linux..."
-    set_boot_order "*lts*, *, *fallback, Snapshots"
     echo "lts" > "$STATE_FILE"
-    sudo limine-snapper-sync || sudo omarchy-refresh-limine || true
-    echo "Successfully set Arch Linux (LTS) as the first default boot option in Limine."
+    install_post_hook
+    apply_default_to_limine lts
+    echo "Default boot kernel set to: Arch Linux (LTS) [Persistent across all updates]"
     ;;
   *)
     echo "Unknown kernel target: $target" >&2
