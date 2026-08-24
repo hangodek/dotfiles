@@ -6,23 +6,29 @@
 
 ## 1. Critical Operational Rules (MANDATORY)
 
-1. **GIT COMMIT & PUSH POLICY**:
-   - **NEVER** run `git commit` or `git push` automatically unless the user **EXPLICITLY** commands you with `"commit dan push"` or `"commit and push"`.
-   - Always verify changes live with the user before asking or waiting for the commit instruction.
+1. **GIT COMMIT & PUSH POLICY (STRICT)**:
+   - **NEVER** run `git commit` or `git push` automatically.
+   - **DO NOT** execute git commit/push as part of an implementation step or infer it from general approval.
+   - You must **ONLY** run `git commit` and `git push` when the user **EXPLICITLY** gives the command (`"commit dan push"`, `"commit and push"`, or `"cp"`).
+   - Always verify changes live with the user before waiting for their explicit commit command.
    - When committing, use the user's configured identity (`hangodek <icyfarhan@gmail.com>`).
 
-2. **EDIT REPOSITORY SOURCES, NOT SYMLINKS OR BACKUPS**:
+2. **NO EMOJIS POLICY (STRICT)**:
+   - **NEVER** output emojis in chat responses, git commit messages, script comments, or markdown documentation files.
+   - Keep all responses clean, professional, direct, and emoji-free.
+
+3. **EDIT REPOSITORY SOURCES, NOT SYMLINKS OR BACKUPS**:
    - Always edit files inside `~/dotfiles/` (e.g. `~/dotfiles/config/hypr/input.lua`), NOT `~/.config/...` directly and NEVER `.bak.*` files.
    - User configs in `~/.config/` and `~/.local/bin/` are symlinks managed by `bootstrap.sh`.
 
-3. **SYSTEM MODIFICATIONS MUST BE SCRIPTED IN DOTFILES**:
+4. **SYSTEM MODIFICATIONS MUST BE SCRIPTED IN DOTFILES**:
    - If a fix modifies system files (like `/usr/share/omarchy/` or `/etc/`), **DO NOT** just run one-off `sudo` commands.
    - You **MUST** codify the fix as a reproducible script in `~/dotfiles/scripts/` (e.g. `scripts/patch-smooth-menu.sh`) and hook it into `~/dotfiles/bootstrap.sh`.
 
-4. **VERIFY & RELOAD LIVE**:
+5. **VERIFY & RELOAD LIVE**:
    - Always reload the relevant component after changing configs:
      - Hyprland: `hyprctl reload`
-     - Omarchy Shell / Top Bar / Menus: `omarchy restart shell`
+     - Omarchy Shell / Top Bar / Menus: `omarchy-restart-shell`
      - Sysctl: `sudo sysctl --system`
 
 ---

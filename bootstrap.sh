@@ -104,11 +104,6 @@ if [[ -f "$DOTFILES/scripts/patch-navbar-font-slider.sh" ]]; then
   bash "$DOTFILES/scripts/patch-navbar-font-slider.sh" || true
 fi
 
-echo "--> Applying EasyEffects & PipeWire audio optimizations..."
-if [[ -f "$DOTFILES/scripts/setup-audio-easyeffects.sh" ]]; then
-  bash "$DOTFILES/scripts/setup-audio-easyeffects.sh" || true
-fi
-
 echo "--> Validating Hyprland config..."
 if command -v hyprctl >/dev/null 2>&1; then
   hyprctl reload >/dev/null 2>&1 || true
