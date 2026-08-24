@@ -14,6 +14,7 @@ Personal dotfiles, native helper utilities, and system optimizations for Arch Li
 - **Ryzen Mobile Power Unlocker (`ryzenadj-power.service`)**: Sustained 25W-30W power limit on battery for AMD Ryzen 5 PRO 3500U.
 - **Limine Dynamic Kernel Selector (`omarchy-default-kernel`)**: Automatic parsing of UKI entries and persistent post-update hooks.
 - **Debloated Keybindings**: Preinstalled webapp shortcuts disabled in favor of clean user keybindings.
+- **Aggressive NVMe Preload Daemon (`preload.conf`)**: Optimized predictive readahead engine with 60 parallel threads, 10s adaptive cycle, and 500KB map resolution for near-instant app and shared library launches.
 - **CachyOS Performance Configuration**: BORE CPU scheduler, TCP BBRv3 + CAKE queueing, ZRAM optimization, and PipeWire real-time priority.
 - **Programmer Keyboard Layout**: Clean US layout with direct quotes and Compose mapped to CapsLock.
 
@@ -44,12 +45,14 @@ Personal dotfiles, native helper utilities, and system optimizations for Arch Li
 ├── README.md                    # Documentation and keybindings
 ├── scripts/
 │   ├── setup-cachyos.sh         # Optional CachyOS kernel and sysctl installer
+│   ├── setup-preload.sh         # Aggressive NVMe preload daemon installer
 │   ├── setup-ryzenadj.sh        # AMD Ryzen Mobile 25W-30W battery boost unlocker
 │   ├── patch-smooth-menu.sh     # Spotlight animation patch for Super+Space
 │   └── patch-navbar-font-slider.sh # 1px incremental font size slider patch
 ├── config/
 │   ├── hypr/                    # Hyprland bindings, looknfeel, input, autostart
 │   ├── omarchy/                 # Omarchy shell and menu customizations
+│   ├── preload/                 # Aggressive NVMe preload daemon tuning
 │   ├── bash/                    # Shell aliases (agyd)
 │   ├── starship.toml            # Cross-shell prompt configuration
 │   └── git/config               # Git identity and configuration

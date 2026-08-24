@@ -104,6 +104,11 @@ if [[ -f "$DOTFILES/scripts/patch-navbar-font-slider.sh" ]]; then
   bash "$DOTFILES/scripts/patch-navbar-font-slider.sh" || true
 fi
 
+echo "--> Configuring aggressive NVMe preload daemon..."
+if [[ -f "$DOTFILES/scripts/setup-preload.sh" ]]; then
+  bash "$DOTFILES/scripts/setup-preload.sh" || true
+fi
+
 echo "--> Validating Hyprland config..."
 if command -v hyprctl >/dev/null 2>&1; then
   hyprctl reload >/dev/null 2>&1 || true
