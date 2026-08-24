@@ -1,6 +1,6 @@
 #!/bin/bash
-# Omarchy Turbo Downloader (aria2c + yt-dlp + gallery-dl)
-# Fast, multi-connection, clipboard-aware downloader for files, video platforms, and image galleries.
+# Omarchy Turbo Downloader (aria2c + yt-dlp)
+# Fast, multi-connection, clipboard-aware downloader for files and streaming media (including Bilibili, YouTube, TikTok, etc.).
 # Usage: omarchy-download [URL]
 
 set -euo pipefail
@@ -12,8 +12,8 @@ mkdir -p "$DOWNLOAD_DIR"
 clear
 gum style \
   --foreground 212 --border-foreground 99 --border double \
-  --align center --width 64 --margin "1 0" --padding "1 2" \
-  "🚀 Omarchy Universal Turbo Downloader" "aria2c (16x Multi-Stream) + yt-dlp + ffmpeg"
+  --align center --width 60 --margin "1 0" --padding "1 2" \
+  "🚀 Omarchy Turbo Downloader" "aria2c (16x Multi-Stream) + yt-dlp"
 
 # 2. Get URL (inspect clipboard or use argument)
 INPUT_URL="${1:-}"
@@ -32,25 +32,18 @@ if [[ -z "$URL" ]]; then
   exit 0
 fi
 
-# Clean Bilibili / query parameters if present (strip trailing tracking tags like ?spm_id_from=...)
-CLEAN_URL="$URL"
-
-# 3. Detect URL Type: Media/Streaming site vs Gallery vs Direct File
+# 3. Detect Media Platform vs Direct File
 IS_MEDIA=0
 IS_BILIBILI=0
-IS_GALLERY=0
 
 if [[ "$URL" =~ (bilibili\.com|b23\.tv|bilibili\.tv) ]]; then
   IS_MEDIA=1
   IS_BILIBILI=1
-elif [[ "$URL" =~ (youtube\.com|youtu\.be|tiktok\.com|twitter\.com|x\.com|instagram\.com|reddit\.com|twitch\.tv|vimeo\.com|soundcloud\.com|fb\.watch|facebook\.com|dailymotion\.com|loom\.com) ]]; then
+elif [[ "$URL" =~ (youtube\.com|youtu\.be|tiktok\.com|twitter\.com|x\.com|instagram\.com|reddit\.com|twitch\.tv|kick\.com|vimeo\.com|soundcloud\.com|fb\.watch|facebook\.com|dailymotion\.com|loom\.com|bandcamp\.com|mixcloud\.com) ]]; then
   IS_MEDIA=1
-elif [[ "$URL" =~ (pixiv\.net|danbooru\.donmai\.us|gelbooru\.com|pinterest\.com|artstation\.com|deviantart\.com) ]]; then
-  IS_GALLERY=1
 fi
 
 MODE="direct"
-COOKIE_OPT=""
 
 if [[ $IS_MEDIA -eq 1 ]]; then
   echo ""
@@ -62,21 +55,16 @@ if [[ $IS_MEDIA -eq 1 ]]; then
 
   MODE=$(gum choose \
     "🎬 Best Video (Highest Quality + aria2c 16x)" \
-    "🎵 Audio Only (MP3/FLAC + Cover Art & Metadata)" \
-    "📺 1080p Video (Balanced Quality + aria2c 16x)" \
-    "🔓 Best Video + Chromium Cookies (Unlock 1080p60/4K/VIP)" \
-    "⚡ Direct File Download (Raw aria2c)")
-
-  if [[ "$MODE" == *"Chromium Cookies"* ]]; then
-    COOKIE_OPT="--cookies-from-browser chromium"
-  fi
+    "🎵 Audio Only (MP3 + Cover Art & Metadata)" \
+    "📺 1080p Video (Balanced Size + aria2c 16x)" \
+    "⚡ Direct Raw Download (aria2c)")
 fi
 
 echo ""
 gum style --foreground 86 "📁 Target Directory: $DOWNLOAD_DIR"
 echo ""
 
-# 4. Configure Platform-Specific Headers (fixes Bilibili 403 Forbidden & referer checks)
+# 4. Configure Bilibili-Specific Headers (fixes 403 Forbidden on CDN chunks)
 CUSTOM_HEADERS=()
 ARIA2C_HEADERS=""
 
@@ -88,7 +76,7 @@ if [[ $IS_BILIBILI -eq 1 ]]; then
   ARIA2C_HEADERS="--header='Referer: https://www.bilibili.com' --header='User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36'"
 fi
 
-# 5. Execute Download based on selection
+# 5. Execute Download
 cd "$DOWNLOAD_DIR"
 START_TIME=$(date +%s)
 
@@ -101,13 +89,9 @@ COMMON_YTDL_ARGS=(
   --concurrent-fragments 4
 )
 
-if [[ -n "$COOKIE_OPT" ]]; then
-  COMMON_YTDL_ARGS+=( "$COOKIE_OPT" )
-fi
-
 case "$MODE" in
   *"Audio Only"*)
-    gum style --foreground 120 "🎵 Downloading and extracting audio..."
+    gum style --foreground 120 "🎵 Downloading and extracting audio (MP3 + Tags)..."
     yt-dlp \
       "${CUSTOM_HEADERS[@]}" \
       "${COMMON_YTDL_ARGS[@]}" \
@@ -117,7 +101,7 @@ case "$MODE" in
       --audio-format mp3 \
       --audio-quality 0 \
       "$URL" || {
-        echo "⚠️ aria2c encountered strict CDN rules. Retrying with native multi-thread..."
+        echo "⚠️ aria2c encountered strict CDN rules. Retrying with native stream..."
         yt-dlp "${CUSTOM_HEADERS[@]}" "${COMMON_YTDL_ARGS[@]}" --extract-audio --audio-format mp3 --audio-quality 0 "$URL"
       }
     ;;

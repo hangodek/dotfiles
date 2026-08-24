@@ -99,6 +99,11 @@ if [[ -f "$DOTFILES/scripts/patch-smooth-menu.sh" ]]; then
   bash "$DOTFILES/scripts/patch-smooth-menu.sh" || true
 fi
 
+echo "--> Applying 1px font size slider patch for Navbar..."
+if [[ -f "$DOTFILES/scripts/patch-navbar-font-slider.sh" ]]; then
+  bash "$DOTFILES/scripts/patch-navbar-font-slider.sh" || true
+fi
+
 echo "--> Validating Hyprland config..."
 if command -v hyprctl >/dev/null 2>&1; then
   hyprctl reload >/dev/null 2>&1 || true
