@@ -1,0 +1,69 @@
+#!/bin/bash
+# Omarchy Audio Output Sink Resolver
+# Resolves virtual DSP sinks (EasyEffects, Omarchy tuning) to the physical hardware sink
+# so volume keys always adjust real physical loudness and DSP always sees 100% nominal input.
+
+set -uo pipefail
+
+sink="${1:-$(pactl get-default-sink 2>/dev/null)}"
+
+if [[ -z $sink || $sink == alsa_output.* ]]; then
+  printf '%s\n' "$sink"
+  exit 0
+fi
+
+# 1. If sink is EasyEffects, resolve immediately to the physical hardware sink
+if [[ $sink == "easyeffects_sink" ]]; then
+  # Check if EasyEffects is feeding a specific downstream sink input
+  downstream="$(pactl list sink-inputs 2>/dev/null |
+    awk '
+      /^Sink Input #/ {target = ""}
+      /^[[:space:]]*Sink:/ {target = $2}
+      /application\.name = "EasyEffects"/ {if (target != "") {print target; exit}}
+    ')"
+
+  if [[ -n $downstream ]]; then
+    name="$(pactl list sinks short 2>/dev/null | awk -v id="$downstream" '$1 == id {print $2; exit}')"
+    if [[ -n $name ]]; then
+      printf '%s\n' "$name"
+      exit 0
+    fi
+  fi
+
+  # Fallback when idle: resolve to the primary physical alsa_output sink
+  hw_sink="$(pactl list sinks short 2>/dev/null | awk '$2 ~ /^alsa_output\./ {print $2; exit}')"
+  if [[ -n $hw_sink ]]; then
+    printf '%s\n' "$hw_sink"
+    exit 0
+  fi
+fi
+
+# 2. General DSP fallback resolution
+downstream="$(pactl list sink-inputs 2>/dev/null |
+  awk -v virt="$sink" '
+    /^Sink Input #/ {target = ""}
+    /^[[:space:]]*Sink:/ {target = $2}
+    /node\.name = / {
+      name = $0
+      sub(/.*node\.name = "/, "", name)
+      sub(/"$/, "", name)
+      if (index(name, virt) == 1 && target != "") {print target; exit}
+    }
+  ')"
+
+if [[ -n $downstream ]]; then
+  name="$(pactl list sinks short 2>/dev/null | awk -v id="$downstream" '$1 == id {print $2; exit}')"
+  if [[ -n $name ]]; then
+    printf '%s\n' "$name"
+    exit 0
+  fi
+fi
+
+# Fallback to physical hardware sink if available
+hw_sink="$(pactl list sinks short 2>/dev/null | awk '$2 ~ /^alsa_output\./ {print $2; exit}')"
+if [[ -n $hw_sink ]]; then
+  printf '%s\n' "$hw_sink"
+  exit 0
+fi
+
+printf '%s\n' "$sink"
