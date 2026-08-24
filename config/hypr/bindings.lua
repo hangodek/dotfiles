@@ -72,4 +72,8 @@ hl.unbind("SUPER + T")
 o.bind("SUPER + T", "Toggle window floating/tiling", hl.dsp.window.float({ action = "toggle" }))
 o.bind("SUPER + SHIFT + T", "Toggle window floating/tiling", hl.dsp.window.float({ action = "toggle" }))
 
+-- Super+E: Maximize / Full width (replaces Super+Alt+F)
+hl.unbind("SUPER + ALT + F")
+o.bind("SUPER + E", "Maximize window / Full width", hl.dsp.window.fullscreen({ mode = "maximized" }))
+
 
