@@ -10,20 +10,24 @@ static int send_hypr_cmd(const char *cmd, char *response_buf, size_t buf_size) {
     if (!his) return -1;
 
     const char *runtime_dir = getenv("XDG_RUNTIME_DIR");
-    char sock_path[512];
-    if (runtime_dir && strlen(runtime_dir) > 0) {
-        snprintf(sock_path, sizeof(sock_path), "%s/hypr/%s/.socket.sock", runtime_dir, his);
-    } else {
-        snprintf(sock_path, sizeof(sock_path), "/run/user/%d/hypr/%s/.socket.sock", getuid(), his);
-    }
-
     int fd = socket(AF_UNIX, SOCK_STREAM, 0);
     if (fd < 0) return -1;
 
     struct sockaddr_un addr;
     memset(&addr, 0, sizeof(addr));
     addr.sun_family = AF_UNIX;
-    strncpy(addr.sun_path, sock_path, sizeof(addr.sun_path) - 1);
+
+    if (runtime_dir && strlen(runtime_dir) > 0) {
+        if (snprintf(addr.sun_path, sizeof(addr.sun_path), "%s/hypr/%s/.socket.sock", runtime_dir, his) >= (int)sizeof(addr.sun_path)) {
+            close(fd);
+            return -1;
+        }
+    } else {
+        if (snprintf(addr.sun_path, sizeof(addr.sun_path), "/run/user/%d/hypr/%s/.socket.sock", getuid(), his) >= (int)sizeof(addr.sun_path)) {
+            close(fd);
+            return -1;
+        }
+    }
 
     if (connect(fd, (struct sockaddr *)&addr, sizeof(addr)) != 0) {
         close(fd);

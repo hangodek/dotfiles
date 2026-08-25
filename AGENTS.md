@@ -36,6 +36,10 @@
    - Do not risk closing or hijacking the user's active windows or killing the running agent process during tests.
    - Verify script logic using unit checks, headless execution, or dedicated sandbox environments.
 
+7. **ALWAYS UPDATE README.MD BEFORE COMMIT & PUSH (STRICT)**:
+   - Before executing any `git commit` and `git push`, you **MUST** audit and update [`README.md`](file:///home/han/dotfiles/README.md).
+   - Keep the feature list, custom keybinding table, repository structure tree, and setup scripts in exact synchronization with the changes being committed.
+
 ---
 
 ## 2. Repository Architecture & Layout
