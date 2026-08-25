@@ -44,17 +44,19 @@ o.bind("SUPER + N", "New scratchpad deck", "scratchpad-deck new")
 hl.unbind("SUPER + W")
 o.bind("SUPER + W", "Close window", "scratchpad-deck close")
 
--- Smart window navigation (Super+Left/Right/Up/Down navigates 2D tiled windows; sliding past top/bottom boundary slides between decks)
+-- 2D Window Navigation (Super + Arrow Keys navigates tiled split windows in all 4 directions)
 hl.unbind("SUPER + LEFT")
 o.bind("SUPER + LEFT", "Focus left window", "nav-window left")
 hl.unbind("SUPER + RIGHT")
 o.bind("SUPER + RIGHT", "Focus right window", "nav-window right")
 hl.unbind("SUPER + UP")
-o.bind("SUPER + UP", "Focus up window / previous scratchpad deck", "nav-window up")
+o.bind("SUPER + UP", "Focus up window", "nav-window up")
 hl.unbind("SUPER + DOWN")
-o.bind("SUPER + DOWN", "Focus down window / next scratchpad deck", "nav-window down")
+o.bind("SUPER + DOWN", "Focus down window", "nav-window down")
 
--- Direct scratchpad deck sliding
+-- Multi-Deck Scratchpad Sliding (Alt + Up / Down and Super + PageUp / PageDown)
+o.bind("ALT + UP", "Previous scratchpad deck", "scratchpad-deck prev")
+o.bind("ALT + DOWN", "Next scratchpad deck", "scratchpad-deck next")
 o.bind("SUPER + PRIOR", "Previous scratchpad deck", "scratchpad-deck prev")
 o.bind("SUPER + NEXT", "Next scratchpad deck", "scratchpad-deck next")
 

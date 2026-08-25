@@ -28,9 +28,10 @@ Personal dotfiles, native helper utilities, and system optimizations for Arch Li
 | Keybinding | Action | Context |
 | :--- | :--- | :--- |
 | **`Alt + F`** | Toggle active scratchpad deck | Anywhere |
-| **`Super + Up` / `Down`** | Focus vertical window tile (slides deck at boundary) | Anywhere |
+| **`Alt + Up` / `Down`** | Slide between scratchpad decks (`deck_1` $\leftrightarrow$ `deck_2` $\leftrightarrow$ `deck_3`) | Anywhere |
+| **`Super + Up` / `Down`** | Focus vertical window tile | Anywhere |
 | **`Super + Left` / `Right`** | Focus horizontal window tile (Native C IPC) | Anywhere |
-| **`Super + PageUp` / `PageDown`** | Instant scratchpad deck sliding | Anywhere |
+| **`Super + PageUp` / `PageDown`** | Direct scratchpad deck sliding | Anywhere |
 | **`Super + E`** | Maximize window / Full width toggle (with border & bar indicator) | Anywhere |
 | **`Super + T` / `Super + Shift + T`** | Toggle window floating / tiling | Anywhere |
 | **`Super + N` / `Alt + Shift + F`** | Create new scratchpad deck | Anywhere |

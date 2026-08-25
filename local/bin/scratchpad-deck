@@ -15,7 +15,8 @@ mkdir -p "$STATE_DIR"
 
 get_active_decks() {
   hyprctl clients -j 2>/dev/null \
-    | jq -r '[.[] | .workspace.name | select(startswith("special:deck_") or . == "special:center")] | unique | sort | .[]' 2>/dev/null || true
+    | jq -r '[.[] | .workspace.name | select(startswith("special:deck_") or . == "special:center")] | unique | .[]' 2>/dev/null \
+    | sort -V || true
 }
 
 get_visible_deck() {
@@ -86,6 +87,11 @@ cmd_toggle() {
       fi
       save_active_deck "$target_deck"
       hyprctl dispatch "hl.dsp.workspace.toggle_special(\"$target_deck\")" > /dev/null
+      local target_addr
+      target_addr=$(hyprctl clients -j 2>/dev/null | jq -r "[.[] | select(.workspace.name == \"special:$target_deck\")] | .[0].address // empty")
+      if [[ -n "$target_addr" ]]; then
+        hyprctl dispatch "hl.dsp.focus({ window = \"address:$target_addr\" })" > /dev/null 2>&1 || true
+      fi
     else
       # No decks exist -> create Deck 1
       cmd_new "deck_1"
@@ -230,6 +236,11 @@ cmd_next() {
   local next_deck="${decks[next_idx]#special:}"
   save_active_deck "$next_deck"
   hyprctl dispatch "hl.dsp.workspace.toggle_special(\"$next_deck\")" > /dev/null
+  local target_addr
+  target_addr=$(hyprctl clients -j 2>/dev/null | jq -r "[.[] | select(.workspace.name == \"special:$next_deck\")] | .[0].address // empty")
+  if [[ -n "$target_addr" ]]; then
+    hyprctl dispatch "hl.dsp.focus({ window = \"address:$target_addr\" })" > /dev/null 2>&1 || true
+  fi
 }
 
 cmd_prev() {
@@ -253,6 +264,11 @@ cmd_prev() {
   local prev_deck="${decks[prev_idx]#special:}"
   save_active_deck "$prev_deck"
   hyprctl dispatch "hl.dsp.workspace.toggle_special(\"$prev_deck\")" > /dev/null
+  local target_addr
+  target_addr=$(hyprctl clients -j 2>/dev/null | jq -r "[.[] | select(.workspace.name == \"special:$prev_deck\")] | .[0].address // empty")
+  if [[ -n "$target_addr" ]]; then
+    hyprctl dispatch "hl.dsp.focus({ window = \"address:$target_addr\" })" > /dev/null 2>&1 || true
+  fi
 }
 
 cmd_close() {
