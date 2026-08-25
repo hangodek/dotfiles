@@ -6,9 +6,11 @@ Personal dotfiles, native helper utilities, and system optimizations for Arch Li
 
 ## Features
 
-- **Multi-Deck Scratchpads (`special:deck_*`)**: Independent floating workspaces supporting split tiling and vertical deck navigation (`Super + Up/Down`).
+- **Multi-Deck Scratchpads (`special:deck_*`)**: Independent floating workspaces supporting split tiling, instant overlay dismissal on window eject (`Super + O`), and vertical deck navigation (`Super + Up/Down`).
 - **Native Spatial Navigation (`nav-window`)**: Compiled C helper executing in under 2ms for directional window focus and scratchpad navigation.
-- **Universal Turbo Downloader (`omarchy-download`)**: Unified aria2c (16 parallel connections) and yt-dlp wrapper with automatic clipboard link detection, Bilibili anti-403 referer injection, and format extraction.
+- **Universal Turbo Downloader (`omarchy-download`)**: Unified aria2c (16 parallel connections) and yt-dlp wrapper with automatic clipboard link detection, Bilibili anti-403 referer injection, format extraction, and decoupled background file manager spawning.
+- **Instant Zero-Flicker Window Resizing**: Disabled intermediate Wayland buffer scaling flood and tuned snappy layout transitions, eliminating black/white blank screens when resizing Chromium, OpenCode, and terminals.
+- **Foot Terminal Optimization (`foot.ini`)**: Configured `resize-delay-ms = 20` for responsive, debounced redraws on tiling window resizing.
 - **Spotlight Menu Animations**: Smooth cubic zoom and fade animation patch for the application launcher (`Super + Space`).
 - **Navbar 1px Font Slider**: Patch enabling 1px fine-grained text scaling steps (`9px` to `20px`) in the monitor/display panel.
 - **Ryzen Mobile Power Unlocker (`ryzenadj-power.service`)**: Sustained 25W-30W power limit on battery for AMD Ryzen 5 PRO 3500U.
@@ -31,7 +33,7 @@ Personal dotfiles, native helper utilities, and system optimizations for Arch Li
 | **`Super + T` / `Super + Shift + T`** | Toggle window floating / tiling | Anywhere |
 | **`Super + N` / `Alt + Shift + F`** | Create new scratchpad deck | Anywhere |
 | **`Super + W`** | Smart close window (preserves deck focus) | Anywhere |
-| **`Super + O`** | Move window to / from active scratchpad deck | Anywhere |
+| **`Super + O`** | Move window to / from active scratchpad deck (instant exit) | Anywhere |
 | **`Super + Shift + O`** | Pop window out (float and pin across workspaces) | Anywhere |
 
 ---
@@ -52,6 +54,7 @@ Personal dotfiles, native helper utilities, and system optimizations for Arch Li
 ├── config/
 │   ├── hypr/                    # Hyprland bindings, looknfeel, input, autostart
 │   ├── omarchy/                 # Omarchy shell and menu customizations
+│   ├── foot/                    # Terminal configuration (resize-delay-ms = 20)
 │   ├── preload/                 # Aggressive NVMe preload daemon tuning
 │   ├── bash/                    # Shell aliases (agyd)
 │   ├── starship.toml            # Cross-shell prompt configuration

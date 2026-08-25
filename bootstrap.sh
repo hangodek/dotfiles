@@ -50,6 +50,12 @@ if [[ -f "$DOTFILES/config/starship.toml" ]]; then
   echo "    linked starship.toml"
 fi
 
+if [[ -f "$DOTFILES/config/foot/foot.ini" ]]; then
+  mkdir -p "$HOME/.config/foot"
+  ln -sf "$DOTFILES/config/foot/foot.ini" "$HOME/.config/foot/foot.ini"
+  echo "    linked foot/foot.ini"
+fi
+
 if [[ -f "$DOTFILES/config/git/config" ]]; then
   mkdir -p "$HOME/.config/git"
   ln -sf "$DOTFILES/config/git/config" "$HOME/.config/git/config"
