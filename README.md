@@ -15,7 +15,7 @@ Personal dotfiles, native helper utilities, and system optimizations for Arch Li
 - **Navbar 1px Font Slider**: Patch enabling 1px fine-grained text scaling steps (`9px` to `20px`) in the monitor/display panel.
 - **Limine Dynamic Kernel Selector (`omarchy-default-kernel`)**: Automatic parsing of UKI entries and persistent post-update hooks.
 - **Debloated Keybindings**: Preinstalled webapp shortcuts disabled in favor of clean user keybindings.
-- **Full-Width Scratchpad Auto-Routing**: Spawning a new terminal (`Super + Return`) while working in full-width mode (`Super + E`) automatically routes the new terminal into the scratchpad deck without breaking the main workspace layout.
+- **Full-Width Scratchpad Auto-Routing & Active Indicators**: Spawning a new terminal (`Super + Return`) while working in full-width mode (`Super + E`) automatically routes the new terminal into the scratchpad deck without breaking the main workspace layout. Includes dual visual feedback with an illuminated top bar indicator (`󰊓`) and dynamic 3px glowing amber window border.
 - **Low-Latency PipeWire & Real-Time Audio Engine**: Configured native sample rates (`44.1kHz` to `96kHz`), enforced 512-sample quantum headroom, 1024-sample WirePlumber ALSA DMA buffer headroom, DAC anti-sleep, and real-time priority limits for crackle-free DSP audio.
 - **Aggressive NVMe Preload Daemon (`preload.conf`)**: Optimized predictive readahead engine with 60 parallel threads, 10s adaptive cycle, and 500KB map resolution for near-instant app and shared library launches.
 - **CachyOS Performance Configuration**: BORE CPU scheduler, TCP BBRv3 + CAKE queueing, ZRAM optimization, and PipeWire real-time priority.
@@ -31,7 +31,7 @@ Personal dotfiles, native helper utilities, and system optimizations for Arch Li
 | **`Super + Up` / `Down`** | Focus vertical window tile (slides deck at boundary) | Anywhere |
 | **`Super + Left` / `Right`** | Focus horizontal window tile (Native C IPC) | Anywhere |
 | **`Super + PageUp` / `PageDown`** | Instant scratchpad deck sliding | Anywhere |
-| **`Super + E`** | Maximize window / Full width toggle | Anywhere |
+| **`Super + E`** | Maximize window / Full width toggle (with border & bar indicator) | Anywhere |
 | **`Super + T` / `Super + Shift + T`** | Toggle window floating / tiling | Anywhere |
 | **`Super + N` / `Alt + Shift + F`** | Create new scratchpad deck | Anywhere |
 | **`Super + W`** | Smart close window (preserves deck focus) | Anywhere |
@@ -53,7 +53,8 @@ Personal dotfiles, native helper utilities, and system optimizations for Arch Li
 │   ├── setup-audio-performance.sh # Real-time audio limits and DAC power-save installer
 │   ├── patch-smooth-menu.sh     # Spotlight animation patch for Super+Space
 │   ├── patch-navbar-font-slider.sh # 1px incremental font size slider patch
-│   └── patch-terminal-scratchpad-routing.sh # Full-width Super+Return scratchpad routing patch
+│   ├── patch-terminal-scratchpad-routing.sh # Full-width Super+Return scratchpad routing patch
+│   └── patch-fullwidth-indicator.sh # Top bar full-width mode indicator patch
 ├── config/
 │   ├── hypr/                    # Hyprland bindings, looknfeel, input, autostart
 │   ├── omarchy/                 # Omarchy shell and menu customizations

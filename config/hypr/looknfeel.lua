@@ -120,5 +120,12 @@ o.window({ title = "(Open File|Open Folder|Save File|Save As|Select a File|Choos
   tag = "+floating-window",
 })
 
+-- Distinct border highlight and 3px thickness for full-width / maximized mode (Super+E)
+o.window({ fullscreen = 1 }, {
+  border_color = { colors = { "rgba(ffb74dee)", "rgba(ff7043ee)" }, angle = 45 },
+  border_size = 3,
+})
+
+
 
 

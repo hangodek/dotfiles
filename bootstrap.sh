@@ -141,6 +141,11 @@ if [[ -f "$DOTFILES/scripts/patch-terminal-scratchpad-routing.sh" ]]; then
   bash "$DOTFILES/scripts/patch-terminal-scratchpad-routing.sh" || true
 fi
 
+echo "--> Patching top bar with full-width mode indicator..."
+if [[ -f "$DOTFILES/scripts/patch-fullwidth-indicator.sh" ]]; then
+  bash "$DOTFILES/scripts/patch-fullwidth-indicator.sh" || true
+fi
+
 echo "--> Configuring real-time audio performance and limits..."
 if [[ -f "$DOTFILES/scripts/setup-audio-performance.sh" ]]; then
   bash "$DOTFILES/scripts/setup-audio-performance.sh" || true
