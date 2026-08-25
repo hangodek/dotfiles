@@ -16,6 +16,7 @@ Personal dotfiles, native helper utilities, and system optimizations for Arch Li
 - **Limine Dynamic Kernel Selector (`omarchy-default-kernel`)**: Automatic parsing of UKI entries and persistent post-update hooks.
 - **Debloated Keybindings**: Preinstalled webapp shortcuts disabled in favor of clean user keybindings.
 - **Full-Width Scratchpad Auto-Routing**: Spawning a new terminal (`Super + Return`) while working in full-width mode (`Super + E`) automatically routes the new terminal into the scratchpad deck without breaking the main workspace layout.
+- **Low-Latency PipeWire & Real-Time Audio Engine**: Configured native sample rates (`44.1kHz` to `96kHz`), enforced 512-sample quantum headroom, 1024-sample WirePlumber ALSA DMA buffer headroom, DAC anti-sleep, and real-time priority limits for crackle-free DSP audio.
 - **Aggressive NVMe Preload Daemon (`preload.conf`)**: Optimized predictive readahead engine with 60 parallel threads, 10s adaptive cycle, and 500KB map resolution for near-instant app and shared library launches.
 - **CachyOS Performance Configuration**: BORE CPU scheduler, TCP BBRv3 + CAKE queueing, ZRAM optimization, and PipeWire real-time priority.
 - **Programmer Keyboard Layout**: Clean US layout with direct quotes and Compose mapped to CapsLock.
@@ -48,12 +49,15 @@ Personal dotfiles, native helper utilities, and system optimizations for Arch Li
 ├── scripts/
 │   ├── setup-cachyos.sh         # Optional CachyOS kernel and sysctl installer
 │   ├── setup-preload.sh         # Aggressive NVMe preload daemon installer
+│   ├── setup-audio-performance.sh # Real-time audio limits and DAC power-save installer
 │   ├── patch-smooth-menu.sh     # Spotlight animation patch for Super+Space
 │   ├── patch-navbar-font-slider.sh # 1px incremental font size slider patch
 │   └── patch-terminal-scratchpad-routing.sh # Full-width Super+Return scratchpad routing patch
 ├── config/
 │   ├── hypr/                    # Hyprland bindings, looknfeel, input, autostart
 │   ├── omarchy/                 # Omarchy shell and menu customizations
+│   ├── pipewire/                # PipeWire native clock rates and quantum buffer headroom
+│   ├── wireplumber/             # WirePlumber ALSA DMA headroom and DAC anti-sleep
 │   ├── foot/                    # Terminal configuration (resize-delay-ms = 20)
 │   ├── preload/                 # Aggressive NVMe preload daemon tuning
 │   ├── bash/                    # Shell aliases (agyd)

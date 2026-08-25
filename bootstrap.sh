@@ -80,6 +80,27 @@ if [[ -d "$DOTFILES/config/environment.d" ]]; then
   done
 fi
 
+echo "--> Linking PipeWire and WirePlumber low-latency configs..."
+if [[ -d "$DOTFILES/config/pipewire" ]]; then
+  mkdir -p "$HOME/.config/pipewire/pipewire.conf.d"
+  for pw_file in "$DOTFILES/config/pipewire/pipewire.conf.d/"*.conf; do
+    if [[ -f "$pw_file" ]]; then
+      ln -sf "$pw_file" "$HOME/.config/pipewire/pipewire.conf.d/$(basename "$pw_file")"
+      echo "    linked pipewire/$(basename "$pw_file")"
+    fi
+  done
+fi
+
+if [[ -d "$DOTFILES/config/wireplumber" ]]; then
+  mkdir -p "$HOME/.config/wireplumber/wireplumber.conf.d"
+  for wp_file in "$DOTFILES/config/wireplumber/wireplumber.conf.d/"*.conf; do
+    if [[ -f "$wp_file" ]]; then
+      ln -sf "$wp_file" "$HOME/.config/wireplumber/wireplumber.conf.d/$(basename "$wp_file")"
+      echo "    linked wireplumber/$(basename "$wp_file")"
+    fi
+  done
+fi
+
 echo "--> Compiling high-performance native helpers..."
 for src_c in "$DOTFILES/local/bin/"*.c; do
   if [[ -f "$src_c" ]]; then
@@ -118,6 +139,11 @@ fi
 echo "--> Patching terminal launcher with scratchpad routing..."
 if [[ -f "$DOTFILES/scripts/patch-terminal-scratchpad-routing.sh" ]]; then
   bash "$DOTFILES/scripts/patch-terminal-scratchpad-routing.sh" || true
+fi
+
+echo "--> Configuring real-time audio performance and limits..."
+if [[ -f "$DOTFILES/scripts/setup-audio-performance.sh" ]]; then
+  bash "$DOTFILES/scripts/setup-audio-performance.sh" || true
 fi
 
 echo "--> Validating Hyprland config..."
