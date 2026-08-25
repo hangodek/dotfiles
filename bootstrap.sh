@@ -115,6 +115,11 @@ if [[ -f "$DOTFILES/scripts/setup-preload.sh" ]]; then
   bash "$DOTFILES/scripts/setup-preload.sh" || true
 fi
 
+echo "--> Patching terminal launcher with scratchpad routing..."
+if [[ -f "$DOTFILES/scripts/patch-terminal-scratchpad-routing.sh" ]]; then
+  bash "$DOTFILES/scripts/patch-terminal-scratchpad-routing.sh" || true
+fi
+
 echo "--> Validating Hyprland config..."
 if command -v hyprctl >/dev/null 2>&1; then
   hyprctl reload >/dev/null 2>&1 || true

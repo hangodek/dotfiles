@@ -31,6 +31,11 @@
      - Omarchy Shell / Top Bar / Menus: `omarchy-restart-shell`
      - Sysctl: `sudo sysctl --system`
 
+6. **SAFE TESTING & ZERO LIVE SESSION DISRUPTION (STRICT)**:
+   - **NEVER** run arbitrary `kill`, `hyprctl dispatch focuswindow`, or window manipulations targeting the active user workspace or the agent's own terminal (`agy`).
+   - Do not risk closing or hijacking the user's active windows or killing the running agent process during tests.
+   - Verify script logic using unit checks, headless execution, or dedicated sandbox environments.
+
 ---
 
 ## 2. Repository Architecture & Layout

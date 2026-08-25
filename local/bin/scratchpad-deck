@@ -46,6 +46,18 @@ save_active_deck() {
   echo "$deck" > "$STATE_FILE"
 }
 
+unfullscreen_window() {
+  local addr="$1"
+  [[ -n "$addr" ]] || return 0
+  local fs_state
+  fs_state=$(hyprctl clients -j 2>/dev/null | jq -r ".[] | select(.address == \"$addr\") | .fullscreen // 0" 2>/dev/null || echo 0)
+  if [[ "$fs_state" -eq 1 ]]; then
+    hyprctl dispatch "hl.dsp.window.fullscreen({ window = \"address:$addr\", mode = \"maximized\" })" > /dev/null 2>&1 || true
+  elif [[ "$fs_state" -eq 2 ]]; then
+    hyprctl dispatch "hl.dsp.window.fullscreen({ window = \"address:$addr\", mode = \"fullscreen\" })" > /dev/null 2>&1 || true
+  fi
+}
+
 cmd_toggle() {
   local vis
   vis=$(get_visible_deck)
@@ -100,12 +112,30 @@ cmd_new() {
     requested_deck="deck_$(( max_num + 1 ))"
   fi
 
-  # Snapshot existing window addresses before opening launcher
+  # Snapshot existing window addresses and main window maximization state
+  local active_main_addr=""
+  local active_main_fs=0
+  local active_main
+  active_main=$(hyprctl activewindow -j 2>/dev/null || true)
+  if [[ -n "$active_main" ]]; then
+    active_main_addr=$(echo "$active_main" | jq -r '.address // empty')
+    active_main_fs=$(echo "$active_main" | jq -r '.fullscreen // 0')
+  fi
+
   local before_addrs
   before_addrs=$(hyprctl clients -j 2>/dev/null | jq -r '.[].address' | sort)
 
-  # Start background watcher to catch newly launched app
+  # 1. Immediately toggle the target deck visible so the new window spawns directly into the scratchpad
+  local vis
+  vis=$(get_visible_deck)
+  if [[ "$vis" != "special:$requested_deck" ]]; then
+    hyprctl dispatch "hl.dsp.workspace.toggle_special(\"$requested_deck\")" > /dev/null 2>&1 || true
+  fi
+  save_active_deck "$requested_deck"
+
+  # Start background watcher to guarantee window placement, un-maximize, and clean cancellation
   (
+    local window_caught=0
     for (( i=0; i<80; i++ )); do
       sleep 0.1
       local after_clients
@@ -116,18 +146,63 @@ cmd_new() {
       new_addr=$(echo "$after_clients" | jq -r '.[].address' | sort | comm -13 <(echo "$before_addrs") - | head -n1 || true)
 
       if [[ -n "$new_addr" ]]; then
-        # Move into the new special deck
-        hyprctl dispatch "hl.dsp.window.move({ window = \"address:$new_addr\", workspace = \"special:$requested_deck\" })" > /dev/null 2>&1 || true
+        window_caught=1
 
-        # Ensure deck is visible
-        if ! hyprctl monitors -j 2>/dev/null | jq -e '.[].specialWorkspace.name == "special:'"$requested_deck"'"' >/dev/null 2>&1; then
+        # 1. Focus the new window first
+        hyprctl dispatch "hl.dsp.focus({ window = \"address:$new_addr\" })" > /dev/null 2>&1 || true
+
+        # 2. Move it to the target special deck
+        hyprctl dispatch "hl.dsp.window.move({ workspace = \"special:$requested_deck\", follow = true })" > /dev/null 2>&1 || true
+
+        # 3. Ensure deck is visible
+        local vis
+        vis=$(get_visible_deck)
+        if [[ "$vis" != "special:$requested_deck" ]]; then
           hyprctl dispatch "hl.dsp.workspace.toggle_special(\"$requested_deck\")" > /dev/null 2>&1 || true
+        fi
+
+        # 4. Ensure new window inside scratchpad is not maximized (0.85 scale with margins)
+        local new_fs
+        new_fs=$(hyprctl clients -j 2>/dev/null | jq -r ".[] | select(.address == \"$new_addr\") | .fullscreen // 0")
+        if [[ "$new_fs" -eq 1 ]]; then
+          hyprctl dispatch "hl.dsp.window.fullscreen({ mode = \"maximized\" })" > /dev/null 2>&1 || true
+        elif [[ "$new_fs" -eq 2 ]]; then
+          hyprctl dispatch "hl.dsp.window.fullscreen({ mode = \"fullscreen\" })" > /dev/null 2>&1 || true
+        fi
+
+        # 5. If the main workspace window was maximized, restore its full width
+        if [[ -n "$active_main_addr" && "$active_main_fs" -gt 0 ]]; then
+          hyprctl dispatch "hl.dsp.focus({ window = \"address:$active_main_addr\" })" > /dev/null 2>&1 || true
+          local current_main_fs
+          current_main_fs=$(hyprctl clients -j 2>/dev/null | jq -r ".[] | select(.address == \"$active_main_addr\") | .fullscreen // 0")
+          if [[ "$current_main_fs" -eq 0 ]]; then
+            if [[ "$active_main_fs" -eq 1 ]]; then
+              hyprctl dispatch "hl.dsp.window.fullscreen({ mode = \"maximized\" })" > /dev/null 2>&1 || true
+            elif [[ "$active_main_fs" -eq 2 ]]; then
+              hyprctl dispatch "hl.dsp.window.fullscreen({ mode = \"fullscreen\" })" > /dev/null 2>&1 || true
+            fi
+          fi
+          # Return focus to the new window inside scratchpad
+          hyprctl dispatch "hl.dsp.focus({ window = \"address:$new_addr\" })" > /dev/null 2>&1 || true
         fi
 
         echo "$requested_deck" > "$STATE_FILE"
         break
       fi
     done
+
+    # If menu was dismissed without launching any app and the deck is empty, dismiss the overlay
+    if [[ $window_caught -eq 0 ]]; then
+      local count_in_deck
+      count_in_deck=$(hyprctl clients -j 2>/dev/null | jq "[.[] | select(.workspace.name == \"special:$requested_deck\")] | length" 2>/dev/null || echo 0)
+      if [[ "$count_in_deck" -eq 0 ]]; then
+        local current_vis
+        current_vis=$(get_visible_deck)
+        if [[ "$current_vis" == "special:$requested_deck" ]]; then
+          hyprctl dispatch "hl.dsp.workspace.toggle_special(\"$requested_deck\")" > /dev/null 2>&1 || true
+        fi
+      fi
+    fi
   ) >/dev/null 2>&1 &
 
   # Open Omarchy Apps Menu
@@ -241,8 +316,8 @@ cmd_eject() {
     current_main=$(hyprctl monitors -j 2>/dev/null \
       | jq -r '.[0].activeWorkspace.name // "1"' 2>/dev/null || echo "1")
 
-    # 1. Move window to current main workspace
-    hyprctl dispatch "hl.dsp.window.move({ window = \"address:$active_addr\", workspace = \"$current_main\" })" > /dev/null 2>&1 || true
+    # 1. Move active window to current main workspace
+    hyprctl dispatch "hl.dsp.window.move({ workspace = \"$current_main\", follow = true })" > /dev/null 2>&1 || true
 
     # 2. Immediately close / dismiss visible scratchpad overlay
     local vis
@@ -252,14 +327,17 @@ cmd_eject() {
       hyprctl dispatch "hl.dsp.workspace.toggle_special(\"$deck_name\")" > /dev/null 2>&1 || true
     fi
 
-    # 3. Focus the ejected window on the main workspace
+    # 3. Focus the ejected window on the main workspace and ensure unmaximized
     hyprctl dispatch "hl.dsp.focus({ window = \"address:$active_addr\" })" > /dev/null 2>&1 || true
+    unfullscreen_window "$active_addr"
   else
     # In Main Workspace -> move into current active deck
     local target_deck
     target_deck=$(get_saved_deck)
 
-    hyprctl dispatch "hl.dsp.window.move({ window = \"address:$active_addr\", workspace = \"special:$target_deck\" })" > /dev/null 2>&1 || true
+    # Ensure unfullscreened before/after moving into deck
+    unfullscreen_window "$active_addr"
+    hyprctl dispatch "hl.dsp.window.move({ workspace = \"special:$target_deck\", follow = true })" > /dev/null 2>&1 || true
 
     # Show deck if not already visible
     local vis
@@ -270,15 +348,94 @@ cmd_eject() {
   fi
 }
 
+cmd_launch() {
+  shift || true
+  local target_deck
+  target_deck=$(get_saved_deck)
+
+  # Snapshot existing window addresses and main window maximization state
+  local active_main_addr=""
+  local active_main_fs=0
+  local active_main
+  active_main=$(hyprctl activewindow -j 2>/dev/null || true)
+  if [[ -n "$active_main" ]]; then
+    active_main_addr=$(echo "$active_main" | jq -r '.address // empty')
+    active_main_fs=$(echo "$active_main" | jq -r '.fullscreen // 0')
+  fi
+
+  local before_addrs
+  before_addrs=$(hyprctl clients -j 2>/dev/null | jq -r '.[].address' | sort)
+
+  # Start background watcher to catch and move the launched window into scratchpad
+  (
+    for (( i=0; i<80; i++ )); do
+      sleep 0.05
+      local after_clients
+      after_clients=$(hyprctl clients -j 2>/dev/null || true)
+      [[ -n "$after_clients" ]] || continue
+
+      local new_addr
+      new_addr=$(echo "$after_clients" | jq -r '.[].address' | sort | comm -13 <(echo "$before_addrs") - | head -n1 || true)
+
+      if [[ -n "$new_addr" ]]; then
+        # 1. Focus the new window first
+        hyprctl dispatch "hl.dsp.focus({ window = \"address:$new_addr\" })" > /dev/null 2>&1 || true
+
+        # 2. Move to the target special deck
+        hyprctl dispatch "hl.dsp.window.move({ workspace = \"special:$target_deck\", follow = true })" > /dev/null 2>&1 || true
+
+        # 3. Ensure deck is visible
+        local vis
+        vis=$(get_visible_deck)
+        if [[ "$vis" != "special:$target_deck" ]]; then
+          hyprctl dispatch "hl.dsp.workspace.toggle_special(\"$target_deck\")" > /dev/null 2>&1 || true
+        fi
+
+        # 4. Ensure new window inside scratchpad is not maximized (0.85 scale with margins)
+        local new_fs
+        new_fs=$(hyprctl clients -j 2>/dev/null | jq -r ".[] | select(.address == \"$new_addr\") | .fullscreen // 0")
+        if [[ "$new_fs" -eq 1 ]]; then
+          hyprctl dispatch "hl.dsp.window.fullscreen({ mode = \"maximized\" })" > /dev/null 2>&1 || true
+        elif [[ "$new_fs" -eq 2 ]]; then
+          hyprctl dispatch "hl.dsp.window.fullscreen({ mode = \"fullscreen\" })" > /dev/null 2>&1 || true
+        fi
+
+        # 5. If the main workspace window was maximized, restore its full width
+        if [[ -n "$active_main_addr" && "$active_main_fs" -gt 0 ]]; then
+          hyprctl dispatch "hl.dsp.focus({ window = \"address:$active_main_addr\" })" > /dev/null 2>&1 || true
+          local current_main_fs
+          current_main_fs=$(hyprctl clients -j 2>/dev/null | jq -r ".[] | select(.address == \"$active_main_addr\") | .fullscreen // 0")
+          if [[ "$current_main_fs" -eq 0 ]]; then
+            if [[ "$active_main_fs" -eq 1 ]]; then
+              hyprctl dispatch "hl.dsp.window.fullscreen({ mode = \"maximized\" })" > /dev/null 2>&1 || true
+            elif [[ "$active_main_fs" -eq 2 ]]; then
+              hyprctl dispatch "hl.dsp.window.fullscreen({ mode = \"fullscreen\" })" > /dev/null 2>&1 || true
+            fi
+          fi
+          # Return focus back to the new window in scratchpad
+          hyprctl dispatch "hl.dsp.focus({ window = \"address:$new_addr\" })" > /dev/null 2>&1 || true
+        fi
+
+        save_active_deck "$target_deck"
+        break
+      fi
+    done
+  ) >/dev/null 2>&1 &
+
+  # Launch the application
+  exec setsid uwsm-app -- "$@"
+}
+
 case "$action" in
   toggle) cmd_toggle ;;
   new)    cmd_new ;;
+  launch) cmd_launch "$@" ;;
   next)   cmd_next ;;
   prev)   cmd_prev ;;
   close)  cmd_close ;;
   eject)  cmd_eject ;;
   *)
-    echo "Usage: scratchpad-deck [toggle|new|next|prev|close|eject]" >&2
+    echo "Usage: scratchpad-deck [toggle|new|launch|next|prev|close|eject]" >&2
     exit 1
     ;;
 esac
