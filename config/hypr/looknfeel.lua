@@ -67,7 +67,7 @@ hl.animation({
 hl.animation({ leaf = "windows", enabled = true, speed = 4.5, bezier = "smoothOut" })
 hl.animation({ leaf = "windowsIn", enabled = true, speed = 4.2, bezier = "smoothOut", style = "popin 88%" })
 hl.animation({ leaf = "windowsOut", enabled = true, speed = 3.0, bezier = "smoothOut", style = "popin 88%" })
-hl.animation({ leaf = "windowsMove", enabled = true, speed = 4.8, bezier = "smoothOut" })
+hl.animation({ leaf = "windowsMove", enabled = true, speed = 8.0, bezier = "snappy" })
 
 -- Smooth window focus cross-fade
 hl.animation({ leaf = "fadeSwitch", enabled = true, speed = 3.5, bezier = "smoothOut" })
@@ -96,8 +96,8 @@ hl.config({
     vrr = 0,
     disable_hyprland_logo = true,
     disable_splash_rendering = true,
-    animate_manual_resizes = true,
-    animate_mouse_windowdragging = true,
+    animate_manual_resizes = false,
+    animate_mouse_windowdragging = false,
     enable_swallow = true,
     swallow_regex = "^(Alacritty|kitty|foot|ghostty)$",
   },
