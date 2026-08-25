@@ -76,4 +76,15 @@ o.bind("SUPER + SHIFT + T", "Toggle window floating/tiling", hl.dsp.window.float
 hl.unbind("SUPER + ALT + F")
 o.bind("SUPER + E", "Maximize window / Full width", hl.dsp.window.fullscreen({ mode = "maximized" }))
 
+-- 10% per step window resize (Super + - and Super + =/+)
+hl.unbind("SUPER + code:20")
+hl.unbind("SUPER + code:21")
+hl.unbind("SUPER + SHIFT + code:20")
+hl.unbind("SUPER + SHIFT + code:21")
+
+o.bind("SUPER + code:20", "Expand window left 10%", hl.dsp.window.resize({ x = -192, y = 0, relative = true }))
+o.bind("SUPER + code:21", "Shrink window left 10%", hl.dsp.window.resize({ x = 192, y = 0, relative = true }))
+o.bind("SUPER + SHIFT + code:20", "Shrink window up 10%", hl.dsp.window.resize({ x = 0, y = -108, relative = true }))
+o.bind("SUPER + SHIFT + code:21", "Expand window down 10%", hl.dsp.window.resize({ x = 0, y = 108, relative = true }))
+
 
