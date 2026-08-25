@@ -52,14 +52,29 @@ static int send_hypr_cmd(const char *cmd, char *response_buf, size_t buf_size) {
     return 0;
 }
 
+static void get_window_address(const char *json_buf, char *out_addr, size_t max_len) {
+    out_addr[0] = '\0';
+    const char *p = strstr(json_buf, "\"address\":");
+    if (!p) return;
+    p += 10;
+    while (*p == ' ' || *p == '\t' || *p == '"' || *p == ':') p++;
+    size_t i = 0;
+    while (*p && *p != '"' && *p != ',' && *p != '\n' && *p != '}' && i < max_len - 1) {
+        out_addr[i++] = *p++;
+    }
+    out_addr[i] = '\0';
+}
+
 int main(int argc, char *argv[]) {
     const char *dir = (argc > 1) ? argv[1] : "left";
 
     // 1. Query active window JSON
     char buf[8192];
     const char *deck_tag = NULL;
+    char addr_before[64] = {0};
     if (send_hypr_cmd("j/activewindow", buf, sizeof(buf)) == 0 && strlen(buf) > 0) {
         deck_tag = strstr(buf, "special:");
+        get_window_address(buf, addr_before, sizeof(addr_before));
     }
 
     // 2. If active window didn't have a special workspace, check if a special workspace is visible on the monitor
@@ -72,17 +87,41 @@ int main(int argc, char *argv[]) {
 
     // 3. Scratchpad Deck Navigation Mode
     if (deck_tag) {
-        if (strcmp(dir, "up") == 0 || strcmp(dir, "u") == 0) {
-            execlp("scratchpad-deck", "scratchpad-deck", "prev", NULL);
-            return 0;
-        } else if (strcmp(dir, "down") == 0 || strcmp(dir, "d") == 0) {
-            execlp("scratchpad-deck", "scratchpad-deck", "next", NULL);
-            return 0;
-        } else if (strcmp(dir, "left") == 0 || strcmp(dir, "l") == 0) {
+        if (strcmp(dir, "left") == 0 || strcmp(dir, "l") == 0) {
             send_hypr_cmd("dispatch hl.dsp.focus { direction = \"l\" }", NULL, 0);
             return 0;
         } else if (strcmp(dir, "right") == 0 || strcmp(dir, "r") == 0) {
             send_hypr_cmd("dispatch hl.dsp.focus { direction = \"r\" }", NULL, 0);
+            return 0;
+        } else if (strcmp(dir, "up") == 0 || strcmp(dir, "u") == 0) {
+            // First attempt to navigate to a window above in the current deck layout
+            send_hypr_cmd("dispatch hl.dsp.focus { direction = \"u\" }", NULL, 0);
+            
+            char buf_after[8192];
+            char addr_after[64] = {0};
+            if (send_hypr_cmd("j/activewindow", buf_after, sizeof(buf_after)) == 0 && strlen(buf_after) > 0) {
+                get_window_address(buf_after, addr_after, sizeof(addr_after));
+            }
+
+            // If focus didn't change (hit the top boundary of the current deck), switch to previous deck
+            if (strlen(addr_before) > 0 && strcmp(addr_before, addr_after) == 0) {
+                execlp("scratchpad-deck", "scratchpad-deck", "prev", NULL);
+            }
+            return 0;
+        } else if (strcmp(dir, "down") == 0 || strcmp(dir, "d") == 0) {
+            // First attempt to navigate to a window below in the current deck layout
+            send_hypr_cmd("dispatch hl.dsp.focus { direction = \"d\" }", NULL, 0);
+            
+            char buf_after[8192];
+            char addr_after[64] = {0};
+            if (send_hypr_cmd("j/activewindow", buf_after, sizeof(buf_after)) == 0 && strlen(buf_after) > 0) {
+                get_window_address(buf_after, addr_after, sizeof(addr_after));
+            }
+
+            // If focus didn't change (hit the bottom boundary of the current deck), switch to next deck
+            if (strlen(addr_before) > 0 && strcmp(addr_before, addr_after) == 0) {
+                execlp("scratchpad-deck", "scratchpad-deck", "next", NULL);
+            }
             return 0;
         }
     }

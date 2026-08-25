@@ -44,15 +44,19 @@ o.bind("SUPER + N", "New scratchpad deck", "scratchpad-deck new")
 hl.unbind("SUPER + W")
 o.bind("SUPER + W", "Close window", "scratchpad-deck close")
 
--- Smart window navigation (Super+Up/Down slides between decks in scratchpad, Super+Left/Right navigates side-by-side tiles)
+-- Smart window navigation (Super+Left/Right/Up/Down navigates 2D tiled windows; sliding past top/bottom boundary slides between decks)
 hl.unbind("SUPER + LEFT")
 o.bind("SUPER + LEFT", "Focus left window", "nav-window left")
 hl.unbind("SUPER + RIGHT")
 o.bind("SUPER + RIGHT", "Focus right window", "nav-window right")
 hl.unbind("SUPER + UP")
-o.bind("SUPER + UP", "Focus up / previous scratchpad deck", "nav-window up")
+o.bind("SUPER + UP", "Focus up window / previous scratchpad deck", "nav-window up")
 hl.unbind("SUPER + DOWN")
-o.bind("SUPER + DOWN", "Focus down / next scratchpad deck", "nav-window down")
+o.bind("SUPER + DOWN", "Focus down window / next scratchpad deck", "nav-window down")
+
+-- Direct scratchpad deck sliding
+o.bind("SUPER + PRIOR", "Previous scratchpad deck", "scratchpad-deck prev")
+o.bind("SUPER + NEXT", "Next scratchpad deck", "scratchpad-deck next")
 
 -- Native Hyprland window swap & move in layout tree
 hl.unbind("SUPER + SHIFT + LEFT")
