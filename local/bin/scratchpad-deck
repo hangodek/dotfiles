@@ -241,38 +241,31 @@ cmd_eject() {
     current_main=$(hyprctl monitors -j 2>/dev/null \
       | jq -r '.[0].activeWorkspace.name // "1"' 2>/dev/null || echo "1")
 
-    hyprctl dispatch "hl.dsp.window.move({ window = \"address:$active_addr\", workspace = \"$current_main\" })" > /dev/null
+    # 1. Move window to current main workspace
+    hyprctl dispatch "hl.dsp.window.move({ window = \"address:$active_addr\", workspace = \"$current_main\" })" > /dev/null 2>&1 || true
 
-    # Check if current deck is now empty
-    local remaining
-    remaining=$(hyprctl clients -j 2>/dev/null \
-      | jq "[.[] | select(.workspace.name == \"$active_ws\")] | length" 2>/dev/null || echo 0)
-
-    if [[ "$remaining" -eq 0 ]]; then
-      # Find if other decks exist
-      mapfile -t remaining_decks < <(get_active_decks)
-      if [[ ${#remaining_decks[@]} -gt 0 ]]; then
-        local next_deck="${remaining_decks[0]#special:}"
-        save_active_deck "$next_deck"
-        hyprctl dispatch "hl.dsp.workspace.toggle_special(\"$next_deck\")" > /dev/null 2>&1 || true
-      else
-        # Close special overlay
-        local deck_name="${active_ws#special:}"
-        hyprctl dispatch "hl.dsp.workspace.toggle_special(\"$deck_name\")" > /dev/null 2>&1 || true
-      fi
+    # 2. Immediately close / dismiss visible scratchpad overlay
+    local vis
+    vis=$(get_visible_deck)
+    if [[ -n "$vis" ]]; then
+      local deck_name="${vis#special:}"
+      hyprctl dispatch "hl.dsp.workspace.toggle_special(\"$deck_name\")" > /dev/null 2>&1 || true
     fi
+
+    # 3. Focus the ejected window on the main workspace
+    hyprctl dispatch "hl.dsp.focus({ window = \"address:$active_addr\" })" > /dev/null 2>&1 || true
   else
     # In Main Workspace -> move into current active deck
     local target_deck
     target_deck=$(get_saved_deck)
 
-    hyprctl dispatch "hl.dsp.window.move({ window = \"address:$active_addr\", workspace = \"special:$target_deck\" })" > /dev/null
+    hyprctl dispatch "hl.dsp.window.move({ window = \"address:$active_addr\", workspace = \"special:$target_deck\" })" > /dev/null 2>&1 || true
 
     # Show deck if not already visible
     local vis
     vis=$(get_visible_deck)
     if [[ "$vis" != "special:$target_deck" ]]; then
-      hyprctl dispatch "hl.dsp.workspace.toggle_special(\"$target_deck\")" > /dev/null
+      hyprctl dispatch "hl.dsp.workspace.toggle_special(\"$target_deck\")" > /dev/null 2>&1 || true
     fi
   fi
 }
