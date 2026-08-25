@@ -13,7 +13,7 @@ clear
 gum style \
   --foreground 212 --border-foreground 99 --border double \
   --align center --width 60 --margin "1 0" --padding "1 2" \
-  "🚀 Omarchy Turbo Downloader" "aria2c (16x Multi-Stream) + yt-dlp"
+  "Omarchy Turbo Downloader" "aria2c (16x Multi-Stream) + yt-dlp"
 
 # 2. Get URL (inspect clipboard or use argument)
 INPUT_URL="${1:-}"
@@ -28,7 +28,7 @@ echo "Enter or paste your download URL below:"
 URL=$(gum input --placeholder "https://... (YouTube, Bilibili, TikTok, Direct ISO/ZIP, Magnet...)" --value "$INPUT_URL")
 
 if [[ -z "$URL" ]]; then
-  gum style --foreground 214 "⚠️ No URL provided. Exiting..."
+  gum style --foreground 214 "No URL provided. Exiting..."
   exit 0
 fi
 
@@ -48,20 +48,20 @@ MODE="direct"
 if [[ $IS_MEDIA -eq 1 ]]; then
   echo ""
   if [[ $IS_BILIBILI -eq 1 ]]; then
-    gum style --foreground 117 "📺 Bilibili (B站) video detected!"
+    gum style --foreground 117 "Bilibili video detected."
   else
-    gum style --foreground 117 "🎬 Media platform detected! Select format:"
+    gum style --foreground 117 "Media platform detected. Select format:"
   fi
 
   MODE=$(gum choose \
-    "🎬 Best Video (Highest Quality + aria2c 16x)" \
-    "🎵 Audio Only (MP3 + Cover Art & Metadata)" \
-    "📺 1080p Video (Balanced Size + aria2c 16x)" \
-    "⚡ Direct Raw Download (aria2c)")
+    "Best Video (Highest Quality + aria2c 16x)" \
+    "Audio Only (MP3 + Cover Art & Metadata)" \
+    "1080p Video (Balanced Size + aria2c 16x)" \
+    "Direct Raw Download (aria2c)")
 fi
 
 echo ""
-gum style --foreground 86 "📁 Target Directory: $DOWNLOAD_DIR"
+gum style --foreground 86 "Target Directory: $DOWNLOAD_DIR"
 echo ""
 
 # 4. Configure Bilibili-Specific Headers (fixes 403 Forbidden on CDN chunks)
@@ -91,7 +91,7 @@ COMMON_YTDL_ARGS=(
 
 case "$MODE" in
   *"Audio Only"*)
-    gum style --foreground 120 "🎵 Downloading and extracting audio (MP3 + Tags)..."
+    gum style --foreground 120 "Downloading and extracting audio (MP3 + Tags)..."
     yt-dlp \
       "${CUSTOM_HEADERS[@]}" \
       "${COMMON_YTDL_ARGS[@]}" \
@@ -101,13 +101,13 @@ case "$MODE" in
       --audio-format mp3 \
       --audio-quality 0 \
       "$URL" || {
-        echo "⚠️ aria2c encountered strict CDN rules. Retrying with native stream..."
+        echo "Notice: aria2c encountered strict CDN rules. Retrying with native stream..."
         yt-dlp "${CUSTOM_HEADERS[@]}" "${COMMON_YTDL_ARGS[@]}" --extract-audio --audio-format mp3 --audio-quality 0 "$URL"
       }
     ;;
 
   *"1080p Video"*)
-    gum style --foreground 120 "📺 Downloading 1080p Video with aria2c acceleration..."
+    gum style --foreground 120 "Downloading 1080p Video with aria2c acceleration..."
     yt-dlp \
       "${CUSTOM_HEADERS[@]}" \
       "${COMMON_YTDL_ARGS[@]}" \
@@ -116,13 +116,13 @@ case "$MODE" in
       -f "bestvideo[height<=1080]+bestaudio/best[height<=1080]" \
       --merge-output-format mp4 \
       "$URL" || {
-        echo "⚠️ Retrying with native multi-stream..."
+        echo "Notice: Retrying with native multi-stream..."
         yt-dlp "${CUSTOM_HEADERS[@]}" "${COMMON_YTDL_ARGS[@]}" -f "bestvideo[height<=1080]+bestaudio/best[height<=1080]" --merge-output-format mp4 "$URL"
       }
     ;;
 
   *"Best Video"*)
-    gum style --foreground 120 "🎬 Downloading Best Video with aria2c acceleration..."
+    gum style --foreground 120 "Downloading Best Video with aria2c acceleration..."
     yt-dlp \
       "${CUSTOM_HEADERS[@]}" \
       "${COMMON_YTDL_ARGS[@]}" \
@@ -130,13 +130,13 @@ case "$MODE" in
       --downloader-args "aria2c:$ARIA2C_HEADERS -s 16 -x 16 -k 1M -j 4" \
       --merge-output-format mp4 \
       "$URL" || {
-        echo "⚠️ Retrying with native multi-stream..."
+        echo "Notice: Retrying with native multi-stream..."
         yt-dlp "${CUSTOM_HEADERS[@]}" "${COMMON_YTDL_ARGS[@]}" --merge-output-format mp4 "$URL"
       }
     ;;
 
   *)
-    gum style --foreground 120 "⚡ Downloading via aria2c (16 parallel connections)..."
+    gum style --foreground 120 "Downloading via aria2c (16 parallel connections)..."
     aria2c \
       --dir="$DOWNLOAD_DIR" \
       --max-connection-per-server=16 \
@@ -159,7 +159,7 @@ DURATION=$(( $(date +%s) - START_TIME ))
 notify-send \
   -i folder-download \
   -a "Omarchy Downloader" \
-  "Download Complete! 🚀" \
+  "Download Complete" \
   "Finished in ${DURATION}s. Saved to ~/Downloads." \
   2>/dev/null || true
 
@@ -167,30 +167,37 @@ echo ""
 gum style \
   --foreground 120 --border-foreground 120 --border rounded \
   --padding "0 2" --margin "1 0" \
-  "✅ Download Complete (${DURATION}s)!" "Saved to: $DOWNLOAD_DIR"
+  "Download Complete (${DURATION}s)" "Saved to: $DOWNLOAD_DIR"
 
 # 7. Post-Download Action
-echo "What would you like to do next?"
+echo "Select next action:"
 ACTION=$(gum choose \
-  "📁 Open in Files (Nautilus)" \
-  "🎬 Open Latest Download in Default App" \
-  "📋 Copy Downloads Path" \
-  "🚪 Exit")
+  "Open in Files (Nautilus)" \
+  "Open Latest Download in Default App" \
+  "Copy Downloads Path" \
+  "Exit")
 
 case "$ACTION" in
   *"Open in Files"*)
-    nautilus "$DOWNLOAD_DIR" >/dev/null 2>&1 &
+    # Fully detach Nautilus into its own process session so closing the terminal does not kill it
+    setsid -f nautilus "$DOWNLOAD_DIR" >/dev/null 2>&1 || (nohup nautilus "$DOWNLOAD_DIR" >/dev/null 2>&1 & disown)
+    sleep 0.1
+    # Focus the newly launched Nautilus window
+    hyprctl dispatch focuswindow "^(org\.gnome\.Nautilus|nautilus)$" >/dev/null 2>&1 || true
+    exit 0
     ;;
   *"Open Latest"*)
-    LATEST=$(ls -t "$DOWNLOAD_DIR" | head -n 1)
+    LATEST=$(ls -t "$DOWNLOAD_DIR" 2>/dev/null | head -n 1)
     if [[ -n "$LATEST" ]]; then
-      xdg-open "$DOWNLOAD_DIR/$LATEST" >/dev/null 2>&1 &
+      setsid -f xdg-open "$DOWNLOAD_DIR/$LATEST" >/dev/null 2>&1 || (nohup xdg-open "$DOWNLOAD_DIR/$LATEST" >/dev/null 2>&1 & disown)
     fi
+    exit 0
     ;;
   *"Copy Downloads"*)
     echo -n "$DOWNLOAD_DIR" | wl-copy 2>/dev/null || true
-    gum style --foreground 86 "Copied '$DOWNLOAD_DIR' to clipboard!"
-    sleep 1
+    gum style --foreground 86 "Copied '$DOWNLOAD_DIR' to clipboard."
+    sleep 0.5
+    exit 0
     ;;
   *)
     exit 0
