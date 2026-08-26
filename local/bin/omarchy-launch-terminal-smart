@@ -1,0 +1,17 @@
+#!/bin/bash
+# Smart terminal launcher: routes to scratchpad if active window is maximized in full-width mode.
+
+set -euo pipefail
+
+active_json=$(hyprctl activewindow -j 2>/dev/null || echo "{}")
+ws_name=$(echo "$active_json" | jq -r '.workspace.name // empty')
+is_fullscreen=$(echo "$active_json" | jq -r '.fullscreen // 0')
+
+target_dir="$(omarchy-cmd-terminal-cwd 2>/dev/null || echo "$HOME")"
+
+# If the focused main-workspace window is maximized (Super+E), route to scratchpad
+if [[ "$ws_name" =~ ^[0-9]+$ && "$is_fullscreen" -gt 0 ]]; then
+  exec scratchpad-deck launch xdg-terminal-exec --dir="$target_dir" "$@"
+fi
+
+exec setsid uwsm-app -- xdg-terminal-exec --dir="$target_dir" "$@"

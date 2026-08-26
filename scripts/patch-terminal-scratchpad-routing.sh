@@ -12,6 +12,11 @@ if grep -q "$MARKER" "$SYSTEM_BIN" 2>/dev/null; then
   exit 0
 fi
 
+if [[ ! -w "$SYSTEM_BIN" && $EUID -ne 0 ]]; then
+  echo "    Notice: Root permissions needed to patch /usr/bin/ (run with sudo to apply)."
+  exit 0
+fi
+
 echo "--> Patching $SYSTEM_BIN with scratchpad routing..."
 
 sudo tee "$SYSTEM_BIN" > /dev/null << 'EOF'

@@ -29,6 +29,10 @@
 -- o.bind("SUPER + PERIOD", nil, "omarchy-shell shell toggle omarchy.emojis")
 
 
+-- Smart Terminal Launcher (routes to scratchpad when active workspace is maximized in Super+E full-width mode)
+hl.unbind("SUPER + RETURN")
+o.bind("SUPER + RETURN", "Terminal", "omarchy-launch-terminal-smart")
+
 -- Multi-Deck Scratchpad controls
 hl.unbind("SUPER + O")
 o.bind("SUPER + O", "Move window to/from active scratchpad deck", "scratchpad-deck eject")

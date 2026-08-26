@@ -70,6 +70,7 @@ Personal dotfiles, native helper utilities, and system optimizations for Arch Li
     ├── nav-window               # Compiled C 2D navigator
     ├── scratchpad-deck          # Multi-deck scratchpad engine
     ├── omarchy-download         # Turbo downloader (aria2c + yt-dlp)
+    ├── omarchy-launch-terminal-smart # Smart terminal launcher with full-width scratchpad routing
     ├── omarchy-default-kernel   # Default boot kernel selector and Limine configurator
     ├── agyd                     # Script wrapper for agy permissions
     └── powerprofilesctl         # DBus power profile wrapper
