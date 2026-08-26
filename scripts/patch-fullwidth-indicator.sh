@@ -10,7 +10,7 @@ INDICATORS_WIDGET="/usr/share/omarchy/shell/plugins/bar/widgets/Indicators.qml"
 
 echo "--> Checking Top Bar Full-Width mode indicator..."
 
-if [[ -f "$FULLWIDTH_QML" ]] && grep -q '"FullWidth"' "$INDICATORS_WIDGET" 2>/dev/null; then
+if [[ -f "$FULLWIDTH_QML" ]]; then
   echo "    Full-Width indicator already active."
   exit 0
 fi

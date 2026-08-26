@@ -49,6 +49,7 @@ Personal dotfiles, native helper utilities, and system optimizations for Arch Li
 ├── AGENTS.md                    # Operational manual for AI coding agents
 ├── README.md                    # Documentation and keybindings
 ├── scripts/
+│   ├── restore-system-patches.sh # Master system restorer and Pacman post-update hook
 │   ├── setup-cachyos.sh         # Optional CachyOS kernel and sysctl installer
 │   ├── setup-preload.sh         # Aggressive NVMe preload daemon installer
 │   ├── setup-audio-performance.sh # Real-time audio limits and DAC power-save installer
