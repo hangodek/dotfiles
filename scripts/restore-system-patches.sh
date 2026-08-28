@@ -52,7 +52,32 @@ if [[ -f "$DOTFILES/scripts/setup-audio-performance.sh" ]]; then
   bash "$DOTFILES/scripts/setup-audio-performance.sh" || true
 fi
 
-# 7. Install / Update Pacman Post-Transaction Hook
+# 7. Preserve CachyOS Pre-Compiled Binary Repositories in /etc/pacman.conf
+PACMAN_CONF="/etc/pacman.conf"
+if [[ -f "$PACMAN_CONF" && -f "/etc/pacman.d/cachyos-v3-mirrorlist" ]]; then
+  if ! grep -q "\[cachyos-v3\]" "$PACMAN_CONF"; then
+    echo "--> Restoring CachyOS binary repositories into $PACMAN_CONF..."
+    # Ensure x86_64_v3 architecture is enabled
+    sed -i 's/^Architecture = auto$/Architecture = auto x86_64_v3/' "$PACMAN_CONF" 2>/dev/null || true
+    sed -i 's/^Architecture = x86_64$/Architecture = x86_64 x86_64_v3/' "$PACMAN_CONF" 2>/dev/null || true
+    # Insert CachyOS repositories before [core]
+    sed -i '/^\[core\]/i \
+[cachyos-v3]\
+Include = /etc/pacman.d/cachyos-v3-mirrorlist\
+\
+[cachyos-core-v3]\
+Include = /etc/pacman.d/cachyos-v3-mirrorlist\
+\
+[cachyos-extra-v3]\
+Include = /etc/pacman.d/cachyos-v3-mirrorlist\
+\
+[cachyos]\
+Include = /etc/pacman.d/cachyos-mirrorlist\
+' "$PACMAN_CONF"
+  fi
+fi
+
+# 8. Install / Update Pacman Post-Transaction Hook
 HOOKS_DIR="/etc/pacman.d/hooks"
 HOOK_FILE="$HOOKS_DIR/99-omarchy-dotfiles-restore.hook"
 mkdir -p "$HOOKS_DIR"
