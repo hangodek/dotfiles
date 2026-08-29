@@ -97,9 +97,8 @@ hl.config({
     disable_hyprland_logo = true,
     disable_splash_rendering = true,
     animate_manual_resizes = false,
-    animate_mouse_windowdragging = false,
-    enable_swallow = true,
-    swallow_regex = "^(Alacritty|kitty|foot|ghostty)$",
+    enable_swallow = false,
+    close_special_on_empty = true,
   },
   cursor = {
     no_warps = true,

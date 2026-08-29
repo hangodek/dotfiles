@@ -283,19 +283,29 @@ cmd_close() {
 
   # This is the LAST window in this deck!
   mapfile -t all_decks < <(get_active_decks)
-  local other_decks=()
-  for d in "${all_decks[@]}"; do
-    if [[ "$d" != "$active_ws" ]]; then
-      other_decks+=("${d#special:}")
+  local count=${#all_decks[@]}
+
+  local curr_idx=0
+  for (( i=0; i<count; i++ )); do
+    if [[ "${all_decks[i]}" == "$active_ws" ]]; then
+      curr_idx=$i
+      break
     fi
   done
+
+  # Prefer nearest preceding deck (5 -> 4 -> 3 -> 2 -> 1), else next available deck
+  local target_deck=""
+  if (( curr_idx > 0 )); then
+    target_deck="${all_decks[curr_idx - 1]#special:}"
+  elif (( count > 1 )); then
+    target_deck="${all_decks[1]#special:}"
+  fi
 
   # Close the active window
   hyprctl dispatch "hl.dsp.window.close({ window = \"address:$active_addr\" })" > /dev/null 2>&1 || true
 
-  if [[ ${#other_decks[@]} -gt 0 ]]; then
-    # Automatically switch to the remaining scratchpad deck so overlay stays open!
-    local target_deck="${other_decks[0]}"
+  if [[ -n "$target_deck" ]]; then
+    # Automatically switch to the nearest preceding scratchpad deck (5 -> 4 -> 3 -> 2 -> 1)!
     save_active_deck "$target_deck"
     sleep 0.05
     hyprctl dispatch "hl.dsp.workspace.toggle_special(\"$target_deck\")" > /dev/null 2>&1 || true
