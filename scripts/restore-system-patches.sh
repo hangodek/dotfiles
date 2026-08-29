@@ -77,7 +77,13 @@ Include = /etc/pacman.d/cachyos-mirrorlist\
   fi
 fi
 
-# 8. Install / Update Pacman Post-Transaction Hook
+# 8. Ensure Essential Dialog Utilities (Zenity for Electron/Wine/script file dialogs)
+if command -v pacman >/dev/null 2>&1; then
+  echo "--> Ensuring zenity dialog engine is installed..."
+  pacman -S --needed --noconfirm zenity >/dev/null 2>&1 || true
+fi
+
+# 9. Install / Update Pacman Post-Transaction Hook
 HOOKS_DIR="/etc/pacman.d/hooks"
 HOOK_FILE="$HOOKS_DIR/99-omarchy-dotfiles-restore.hook"
 mkdir -p "$HOOKS_DIR"
