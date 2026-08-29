@@ -44,7 +44,9 @@ o.bind("ALT + F", "Toggle active scratchpad deck", "scratchpad-deck toggle")
 o.bind("ALT + SHIFT + F", "New scratchpad deck", "scratchpad-deck new")
 o.bind("SUPER + N", "New scratchpad deck", "scratchpad-deck new")
 
--- Native Hyprland window close is handled by default hl.dsp.window.close()
+-- Smart window close: falls back to remaining scratchpad deck if last window in deck closes
+hl.unbind("SUPER + W")
+o.bind("SUPER + W", "Close window", "scratchpad-deck close")
 
 -- 2D Window Navigation (Super + Arrow Keys navigates tiled split windows in all 4 directions)
 hl.unbind("SUPER + LEFT")

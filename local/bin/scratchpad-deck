@@ -256,7 +256,55 @@ cmd_prev() {
 }
 
 cmd_close() {
-  hyprctl dispatch "hl.dsp.window.close()" > /dev/null 2>&1 || true
+  local active_json
+  active_json=$(hyprctl activewindow -j 2>/dev/null || echo "{}")
+  local active_ws
+  active_ws=$(echo "$active_json" | jq -r '.workspace.name // empty')
+  local active_addr
+  active_addr=$(echo "$active_json" | jq -r '.address // empty')
+
+  [[ -n "$active_addr" ]] || exit 0
+
+  # If not in a scratchpad deck (normal workspaces 1, 2, 3, etc.)
+  if [[ ! "$active_ws" =~ ^special:(deck_[0-9]+|center)$ ]]; then
+    hyprctl dispatch "hl.dsp.window.close()" > /dev/null 2>&1 || true
+    exit 0
+  fi
+
+  # Inside a scratchpad deck: count windows in THIS deck
+  local count_in_this_deck
+  count_in_this_deck=$(hyprctl clients -j 2>/dev/null | jq "[.[] | select(.workspace.name == \"$active_ws\")] | length" 2>/dev/null || echo 1)
+
+  if [[ "$count_in_this_deck" -gt 1 ]]; then
+    # More than 1 window in this deck -> simply close this window
+    hyprctl dispatch "hl.dsp.window.close({ window = \"address:$active_addr\" })" > /dev/null 2>&1 || true
+    exit 0
+  fi
+
+  # This is the LAST window in this deck!
+  mapfile -t all_decks < <(get_active_decks)
+  local other_decks=()
+  for d in "${all_decks[@]}"; do
+    if [[ "$d" != "$active_ws" ]]; then
+      other_decks+=("${d#special:}")
+    fi
+  done
+
+  # Close the active window
+  hyprctl dispatch "hl.dsp.window.close({ window = \"address:$active_addr\" })" > /dev/null 2>&1 || true
+
+  if [[ ${#other_decks[@]} -gt 0 ]]; then
+    # Automatically switch to the remaining scratchpad deck so overlay stays open!
+    local target_deck="${other_decks[0]}"
+    save_active_deck "$target_deck"
+    sleep 0.05
+    hyprctl dispatch "hl.dsp.workspace.toggle_special(\"$target_deck\")" > /dev/null 2>&1 || true
+    local target_addr
+    target_addr=$(hyprctl clients -j 2>/dev/null | jq -r "[.[] | select(.workspace.name == \"special:$target_deck\")] | .[0].address // empty")
+    if [[ -n "$target_addr" ]]; then
+      hyprctl dispatch "hl.dsp.focus({ window = \"address:$target_addr\" })" > /dev/null 2>&1 || true
+    fi
+  fi
 }
 
 cmd_eject() {

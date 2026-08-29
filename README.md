@@ -35,7 +35,7 @@ Personal dotfiles, native helper utilities, and system optimizations for Arch Li
 | **`Super + E`** | Maximize window / Full width toggle (with border & bar indicator) | Anywhere |
 | **`Super + T` / `Super + Shift + T`** | Toggle window floating / tiling | Anywhere |
 | **`Super + N` / `Alt + Shift + F`** | Create new scratchpad deck | Anywhere |
-| **`Super + W`** | Close focused window (Native Hyprland) | Anywhere |
+| **`Super + W`** | Smart close window (auto-slides to remaining scratchpad deck) | Anywhere |
 | **`Super + O`** | Move window to / from active scratchpad deck (instant exit) | Anywhere |
 | **`Super + Shift + O`** | Pop window out (float and pin across workspaces) | Anywhere |
 
