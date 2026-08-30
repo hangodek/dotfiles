@@ -75,8 +75,7 @@
         ├── omarchy-agent        # Default agent dispatcher
         ├── omarchy-default-agent# Agent switcher
         ├── omarchy-default-kernel# Default boot kernel switcher and Limine configurator
-        ├── nav-window           # Compiled C 2D workspace & scratchpad navigator
-        ├── scratchpad-deck      # Independent multi-deck floating workspace engine
+        ├── nav-window           # Compiled C 2D spatial window tile navigator
         └── powerprofilesctl     # Native DBus wrapper for 1-click power profiles
 ```
 
@@ -84,16 +83,12 @@
 
 ## 3. Core Subsystems
 
-### A. Independent Multi-Deck Scratchpads (`special:deck_*`)
-- **Concept**: Omarchy uses dynamic virtual decks (`special:deck_1`, `special:deck_2`, `special:deck_3`, ...).
+### A. 2D Spatial Window Navigation (`nav-window`)
+- **Concept**: Sub-millisecond compiled C helper for direct window tile navigation in Hyprland dwindle layout.
 - **Behavior**:
-  - Each deck is an independent floating workspace supporting dwindle split tiling.
-  - `Super + Up` / `Super + Down`: Slide smoothly between scratchpad decks.
-  - `Super + Left` / `Super + Right`: Navigate between split window tiles inside the current deck.
-  - `Super + N` / `Alt + Shift + F`: Prompt the App Menu to launch an app in a new deck.
-  - `Super + W`: Smart close that focuses the remaining deck when closing the last window in a deck.
-  - `Alt + F`: Toggle overlay visibility.
-- **Engine Scripts**: `~/dotfiles/local/bin/scratchpad-deck` and `~/dotfiles/local/bin/nav-window`.
+  - `Super + Left` / `Super + Right` / `Super + Up` / `Super + Down`: Focus adjacent window tiles via direct Hyprland UNIX socket IPC without shell overhead.
+  - `Super + Shift + Left/Right/Up/Down`: Swap window position in the layout tree.
+- **Engine**: `~/dotfiles/local/bin/nav-window.c`.
 
 ---
 

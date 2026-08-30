@@ -29,25 +29,6 @@
 -- o.bind("SUPER + PERIOD", nil, "omarchy-shell shell toggle omarchy.emojis")
 
 
--- Smart Terminal Launcher (routes to scratchpad when active workspace is maximized in Super+E full-width mode)
-hl.unbind("SUPER + RETURN")
-o.bind("SUPER + RETURN", "Terminal", "omarchy-launch-terminal-smart")
-
--- Multi-Deck Scratchpad controls
-hl.unbind("SUPER + O")
-o.bind("SUPER + O", "Move window to/from active scratchpad deck", "scratchpad-deck eject")
-
--- Alt+F: Toggle active scratchpad deck (launches app menu if empty)
-o.bind("ALT + F", "Toggle active scratchpad deck", "scratchpad-deck toggle")
-
--- Create brand new independent scratchpad deck
-o.bind("ALT + SHIFT + F", "New scratchpad deck", "scratchpad-deck new")
-o.bind("SUPER + N", "New scratchpad deck", "scratchpad-deck new")
-
--- Smart window close: falls back to remaining scratchpad deck if last window in deck closes
-hl.unbind("SUPER + W")
-o.bind("SUPER + W", "Close window", "scratchpad-deck close")
-
 -- 2D Window Navigation (Super + Arrow Keys navigates tiled split windows in all 4 directions)
 hl.unbind("SUPER + LEFT")
 o.bind("SUPER + LEFT", "Focus left window", "nav-window left")
@@ -58,12 +39,6 @@ o.bind("SUPER + UP", "Focus up window", "nav-window up")
 hl.unbind("SUPER + DOWN")
 o.bind("SUPER + DOWN", "Focus down window", "nav-window down")
 
--- Multi-Deck Scratchpad Sliding (Alt + Up / Down and Super + PageUp / PageDown)
-o.bind("ALT + UP", "Previous scratchpad deck", "scratchpad-deck prev")
-o.bind("ALT + DOWN", "Next scratchpad deck", "scratchpad-deck next")
-o.bind("SUPER + PRIOR", "Previous scratchpad deck", "scratchpad-deck prev")
-o.bind("SUPER + NEXT", "Next scratchpad deck", "scratchpad-deck next")
-
 -- Native Hyprland window swap & move in layout tree
 hl.unbind("SUPER + SHIFT + LEFT")
 o.bind("SUPER + SHIFT + LEFT", "Move window left in layout", hl.dsp.window.move({ direction = "l" }))
@@ -73,9 +48,6 @@ hl.unbind("SUPER + SHIFT + UP")
 o.bind("SUPER + SHIFT + UP", "Move window up in layout", hl.dsp.window.move({ direction = "u" }))
 hl.unbind("SUPER + SHIFT + DOWN")
 o.bind("SUPER + SHIFT + DOWN", "Move window down in layout", hl.dsp.window.move({ direction = "d" }))
-
--- Original DHH pinned pop-out (sticky across all workspaces + always on top for PiP)
-o.bind("SUPER + SHIFT + O", "Pop window out (float & pin)", "omarchy-hyprland-window-pop")
 
 -- Super+T: Toggle window floating/tiling
 hl.unbind("SUPER + T")

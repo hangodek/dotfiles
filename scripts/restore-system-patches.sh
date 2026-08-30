@@ -37,22 +37,17 @@ if [[ -f "$DOTFILES/scripts/patch-fullwidth-indicator.sh" ]]; then
   bash "$DOTFILES/scripts/patch-fullwidth-indicator.sh" || true
 fi
 
-# 4. Terminal Launcher Scratchpad Routing
-if [[ -f "$DOTFILES/scripts/patch-terminal-scratchpad-routing.sh" ]]; then
-  bash "$DOTFILES/scripts/patch-terminal-scratchpad-routing.sh" || true
-fi
-
-# 5. NVMe Aggressive Preload Daemon
+# 4. NVMe Aggressive Preload Daemon
 if [[ -f "$DOTFILES/scripts/setup-preload.sh" ]]; then
   bash "$DOTFILES/scripts/setup-preload.sh" || true
 fi
 
-# 6. Real-Time Audio Performance & Limits
+# 5. Real-Time Audio Performance & Limits
 if [[ -f "$DOTFILES/scripts/setup-audio-performance.sh" ]]; then
   bash "$DOTFILES/scripts/setup-audio-performance.sh" || true
 fi
 
-# 7. Preserve CachyOS Pre-Compiled Binary Repositories in /etc/pacman.conf
+# 6. Preserve CachyOS Pre-Compiled Binary Repositories in /etc/pacman.conf
 PACMAN_CONF="/etc/pacman.conf"
 if [[ -f "$PACMAN_CONF" && -f "/etc/pacman.d/cachyos-v3-mirrorlist" ]]; then
   if ! grep -q "\[cachyos-v3\]" "$PACMAN_CONF"; then
@@ -77,13 +72,13 @@ Include = /etc/pacman.d/cachyos-mirrorlist\
   fi
 fi
 
-# 8. Ensure Essential Dialog Utilities (Zenity for Electron/Wine/script file dialogs)
+# 7. Ensure Essential Dialog Utilities (Zenity for Electron/Wine/script file dialogs)
 if command -v pacman >/dev/null 2>&1; then
   echo "--> Ensuring zenity dialog engine is installed..."
   pacman -S --needed --noconfirm zenity >/dev/null 2>&1 || true
 fi
 
-# 9. Install / Update Pacman Post-Transaction Hook
+# 8. Install / Update Pacman Post-Transaction Hook
 HOOKS_DIR="/etc/pacman.d/hooks"
 HOOK_FILE="$HOOKS_DIR/99-omarchy-dotfiles-restore.hook"
 mkdir -p "$HOOKS_DIR"

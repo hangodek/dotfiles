@@ -6,8 +6,8 @@ Personal dotfiles, native helper utilities, and system optimizations for Arch Li
 
 ## Features
 
-- **Multi-Deck Scratchpads (`special:deck_*`)**: Independent floating workspaces supporting split tiling, instant overlay dismissal on window eject (`Super + O`), and vertical deck navigation (`Super + Up/Down`).
-- **Native Spatial Navigation (`nav-window`)**: Compiled C helper executing in under 2ms for directional window focus and scratchpad navigation.
+- **Native Spatial Navigation (`nav-window`)**: Compiled C helper executing in under 1ms for direct 2D directional window focus (`Super + Arrow keys`).
+- **Full-Width Mode (`Super + E`)**: Dedicated full-width maximization toggle featuring dual visual feedback with an illuminated top bar indicator (`󰊓`) and a dynamic 3px glowing amber window border.
 - **Universal Turbo Downloader (`omarchy-download`)**: Unified aria2c (16 parallel connections) and yt-dlp wrapper with automatic clipboard link detection, Bilibili anti-403 referer injection, format extraction, and decoupled background file manager spawning.
 - **Instant Zero-Flicker Window Resizing**: Disabled intermediate Wayland buffer scaling flood and tuned snappy layout transitions, eliminating black/white blank screens when resizing Chromium, OpenCode, and terminals.
 - **Foot Terminal Optimization (`foot.ini`)**: Configured `resize-delay-ms = 20` for responsive, debounced redraws on tiling window resizing.
@@ -15,7 +15,6 @@ Personal dotfiles, native helper utilities, and system optimizations for Arch Li
 - **Navbar 1px Font Slider**: Patch enabling 1px fine-grained text scaling steps (`9px` to `20px`) in the monitor/display panel.
 - **Limine Dynamic Kernel Selector (`omarchy-default-kernel`)**: Automatic parsing of UKI entries and persistent post-update hooks.
 - **Debloated Keybindings**: Preinstalled webapp shortcuts disabled in favor of clean user keybindings.
-- **Full-Width Scratchpad Auto-Routing & Active Indicators**: Spawning a new terminal (`Super + Return`) while working in full-width mode (`Super + E`) automatically routes the new terminal into the scratchpad deck without breaking the main workspace layout. Includes dual visual feedback with an illuminated top bar indicator (`󰊓`) and dynamic 3px glowing amber window border.
 - **Low-Latency PipeWire & Real-Time Audio Engine**: Configured native sample rates (`44.1kHz` to `96kHz`), enforced 512-sample quantum headroom, 1024-sample WirePlumber ALSA DMA buffer headroom, DAC anti-sleep, and real-time priority limits for crackle-free DSP audio.
 - **Aggressive NVMe Preload Daemon (`preload.conf`)**: Optimized predictive readahead engine with 60 parallel threads, 10s adaptive cycle, and 500KB map resolution for near-instant app and shared library launches.
 - **CachyOS Performance Configuration**: BORE CPU scheduler, TCP BBRv3 + CAKE queueing, ZRAM optimization, and PipeWire real-time priority.
@@ -25,19 +24,19 @@ Personal dotfiles, native helper utilities, and system optimizations for Arch Li
 
 ## Custom Keybindings
 
-| Keybinding | Action | Context |
+| Keybinding | Action | Description |
 | :--- | :--- | :--- |
-| **`Alt + F`** | Toggle active scratchpad deck | Anywhere |
-| **`Alt + Up` / `Down`** | Slide between scratchpad decks (`deck_1` $\leftrightarrow$ `deck_2` $\leftrightarrow$ `deck_3`) | Anywhere |
-| **`Super + Up` / `Down`** | Focus vertical window tile | Anywhere |
-| **`Super + Left` / `Right`** | Focus horizontal window tile (Native C IPC) | Anywhere |
-| **`Super + PageUp` / `PageDown`** | Direct scratchpad deck sliding | Anywhere |
-| **`Super + E`** | Maximize window / Full width toggle (with border & bar indicator) | Anywhere |
-| **`Super + T` / `Super + Shift + T`** | Toggle window floating / tiling | Anywhere |
-| **`Super + N` / `Alt + Shift + F`** | Create new scratchpad deck | Anywhere |
-| **`Super + W`** | Smart close window (auto-slides to remaining scratchpad deck) | Anywhere |
-| **`Super + O`** | Move window to / from active scratchpad deck (instant exit) | Anywhere |
-| **`Super + Shift + O`** | Pop window out (float and pin across workspaces) | Anywhere |
+| **`Super + Return`** | Launch Terminal | Standard Omarchy terminal in active working directory |
+| **`Super + O`** | Pop window out | Float and pin active window across all workspaces (native Omarchy) |
+| **`Super + W`** | Close window | Native Hyprland clean window close |
+| **`Super + E`** | Maximize / Full width | Toggle full-width mode with glowing amber border & bar indicator |
+| **`Super + T` / `Shift + T`** | Toggle Float / Tile | Toggle window between floating and tiled layout |
+| **`Super + Left` / `Right`** | Focus horizontal tile | Instant < 1ms native C socket directional focus |
+| **`Super + Up` / `Down`** | Focus vertical tile | Instant < 1ms native C socket directional focus |
+| **`Super + Shift + Arrows`** | Swap window tile | Swap active window position in layout tree |
+| **`Super + -` / `Super + =`** | Resize window 10% | Step-by-step 10% window resizing |
+| **`Super + S`** | Toggle Scratchpad | Native Hyprland scratchpad overlay (`special:scratchpad`) |
+| **`Super + Alt + S`** | Move to Scratchpad | Send active window to native scratchpad overlay |
 
 ---
 
@@ -55,7 +54,6 @@ Personal dotfiles, native helper utilities, and system optimizations for Arch Li
 │   ├── setup-audio-performance.sh # Real-time audio limits and DAC power-save installer
 │   ├── patch-smooth-menu.sh     # Spotlight animation patch for Super+Space
 │   ├── patch-navbar-font-slider.sh # 1px incremental font size slider patch
-│   ├── patch-terminal-scratchpad-routing.sh # Full-width Super+Return scratchpad routing patch
 │   └── patch-fullwidth-indicator.sh # Top bar full-width mode indicator patch
 ├── config/
 │   ├── hypr/                    # Hyprland bindings, looknfeel, input, autostart
@@ -68,13 +66,12 @@ Personal dotfiles, native helper utilities, and system optimizations for Arch Li
 │   ├── starship.toml            # Cross-shell prompt configuration
 │   └── git/config               # Git identity and configuration
 └── local/bin/
-    ├── nav-window               # Compiled C 2D navigator
-    ├── scratchpad-deck          # Multi-deck scratchpad engine
+    ├── nav-window               # Compiled C 2D spatial window navigator
     ├── omarchy-download         # Turbo downloader (aria2c + yt-dlp)
-    ├── omarchy-launch-terminal-smart # Smart terminal launcher with full-width scratchpad routing
     ├── omarchy-default-kernel   # Default boot kernel selector and Limine configurator
-    ├── agyd                     # Script wrapper for agy permissions
-    └── powerprofilesctl         # DBus power profile wrapper
+    ├── powerprofilesctl         # Native DBus wrapper for 1-click power profiles
+    ├── agyd                     # Auto-permission wrapper for Antigravity CLI
+    └── omarchy-agent            # Default agent dispatcher
 ```
 
 ---
