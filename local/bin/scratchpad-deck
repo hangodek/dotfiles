@@ -52,10 +52,40 @@ unfullscreen_window() {
   [[ -n "$addr" ]] || return 0
   local fs_state
   fs_state=$(hyprctl clients -j 2>/dev/null | jq -r ".[] | select(.address == \"$addr\") | .fullscreen // 0" 2>/dev/null || echo 0)
-  if [[ "$fs_state" -eq 1 ]]; then
-    hyprctl dispatch "hl.dsp.window.fullscreen({ window = \"address:$addr\", mode = \"maximized\" })" > /dev/null 2>&1 || true
-  elif [[ "$fs_state" -eq 2 ]]; then
-    hyprctl dispatch "hl.dsp.window.fullscreen({ window = \"address:$addr\", mode = \"fullscreen\" })" > /dev/null 2>&1 || true
+  if [[ "$fs_state" -gt 0 ]]; then
+    hyprctl dispatch "hl.dsp.focus({ window = \"address:$addr\" })" > /dev/null 2>&1 || true
+    if [[ "$fs_state" -eq 1 ]]; then
+      hyprctl dispatch "hl.dsp.window.fullscreen({ mode = \"maximized\" })" > /dev/null 2>&1 || true
+    elif [[ "$fs_state" -eq 2 ]]; then
+      hyprctl dispatch "hl.dsp.window.fullscreen({ mode = \"fullscreen\" })" > /dev/null 2>&1 || true
+    fi
+  fi
+}
+
+restore_main_fullscreen() {
+  local main_addr="$1"
+  local main_fs="$2"
+  local target_win="$3"
+
+  [[ -n "$main_addr" && "$main_fs" -gt 0 ]] || return 0
+
+  sleep 0.05
+  local current_fs
+  current_fs=$(hyprctl clients -j 2>/dev/null | jq -r ".[] | select(.address == \"$main_addr\") | .fullscreen // 0" 2>/dev/null || echo 0)
+
+  if [[ "$current_fs" -eq 0 ]]; then
+    # Explicitly focus the exact main window before toggling fullscreen
+    hyprctl dispatch "hl.dsp.focus({ window = \"address:$main_addr\" })" > /dev/null 2>&1 || true
+    if [[ "$main_fs" -eq 1 ]]; then
+      hyprctl dispatch "hl.dsp.window.fullscreen({ mode = \"maximized\" })" > /dev/null 2>&1 || true
+    elif [[ "$main_fs" -eq 2 ]]; then
+      hyprctl dispatch "hl.dsp.window.fullscreen({ mode = \"fullscreen\" })" > /dev/null 2>&1 || true
+    fi
+  fi
+
+  # Return focus back to the target scratchpad window
+  if [[ -n "$target_win" ]]; then
+    hyprctl dispatch "hl.dsp.focus({ window = \"address:$target_win\" })" > /dev/null 2>&1 || true
   fi
 }
 
@@ -174,6 +204,14 @@ cmd_new() {
         if [[ "$vis" != "special:$requested_deck" ]]; then
           hyprctl dispatch "hl.dsp.workspace.toggle_special(\"$requested_deck\")" > /dev/null 2>&1 || true
         fi
+
+        # 4. Always un-maximize the new scratchpad window so it stays independent
+        #    regardless of whether the main workspace window was in Super+E mode
+        sleep 0.05
+        unfullscreen_window "$new_addr"
+
+        # 5. If the main workspace window was in Super+E mode, restore its full width
+        restore_main_fullscreen "$active_main_addr" "$active_main_fs" "$new_addr"
 
         echo "$requested_deck" > "$STATE_FILE"
         break
@@ -416,6 +454,14 @@ cmd_launch() {
         if [[ "$vis" != "special:$target_deck" ]]; then
           hyprctl dispatch "hl.dsp.workspace.toggle_special(\"$target_deck\")" > /dev/null 2>&1 || true
         fi
+
+        # 4. Always un-maximize the new scratchpad window so it stays independent
+        #    regardless of whether the main workspace window was in Super+E mode
+        sleep 0.05
+        unfullscreen_window "$new_addr"
+
+        # 5. If the main workspace window was in Super+E mode, restore its full width
+        restore_main_fullscreen "$active_main_addr" "$active_main_fs" "$new_addr"
 
         save_active_deck "$target_deck"
         break

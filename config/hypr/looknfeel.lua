@@ -124,7 +124,3 @@ o.window({ fullscreen = 1 }, {
   border_color = { colors = { "rgba(ffb74dee)", "rgba(ff7043ee)" }, angle = 45 },
   border_size = 3,
 })
-
-
-
-
