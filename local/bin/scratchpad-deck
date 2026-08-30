@@ -8,10 +8,26 @@ set -euo pipefail
 
 action="${1:-toggle}"
 
-# State directory to remember active deck
+# State directory to remember active deck and main window focus anchor
 STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/omarchy/scratchpad"
 STATE_FILE="$STATE_DIR/active_deck"
+MAIN_WINDOW_FILE="$STATE_DIR/main_window_addr"
 mkdir -p "$STATE_DIR"
+
+save_main_window() {
+  local addr="$1"
+  if [[ -n "$addr" ]]; then
+    echo "$addr" > "$MAIN_WINDOW_FILE"
+  fi
+}
+
+get_saved_main_window() {
+  if [[ -r "$MAIN_WINDOW_FILE" ]]; then
+    cat "$MAIN_WINDOW_FILE"
+  else
+    echo ""
+  fi
+}
 
 get_active_decks() {
   hyprctl clients -j 2>/dev/null \
@@ -98,8 +114,32 @@ cmd_toggle() {
     local deck_name="${vis#special:}"
     save_active_deck "$deck_name"
     hyprctl dispatch "hl.dsp.workspace.toggle_special(\"$deck_name\")" > /dev/null
+
+    # Restore focus to the original main window on active workspace
+    local saved_main
+    saved_main=$(get_saved_main_window)
+    if [[ -n "$saved_main" ]]; then
+      local cur_ws
+      cur_ws=$(hyprctl activeworkspace -j 2>/dev/null | jq -r '.id // empty')
+      local win_ws
+      win_ws=$(hyprctl clients -j 2>/dev/null | jq -r ".[] | select(.address == \"$saved_main\") | .workspace.id // empty")
+      if [[ "$cur_ws" == "$win_ws" ]]; then
+        hyprctl dispatch "hl.dsp.focus({ window = \"address:$saved_main\" })" > /dev/null 2>&1 || true
+      fi
+    fi
   else
-    # Currently hidden -> open last active deck or create new
+    # Currently hidden -> snapshot active main window and open deck
+    local active_now
+    active_now=$(hyprctl activewindow -j 2>/dev/null || echo "{}")
+    local active_now_ws
+    active_now_ws=$(echo "$active_now" | jq -r '.workspace.name // empty')
+    local active_now_addr
+    active_now_addr=$(echo "$active_now" | jq -r '.address // empty')
+    if [[ "$active_now_ws" =~ ^[0-9]+$ && -n "$active_now_addr" ]]; then
+      save_main_window "$active_now_addr"
+    fi
+
+    # Open last active deck or create new
     mapfile -t decks < <(get_active_decks)
     if [[ ${#decks[@]} -gt 0 ]]; then
       local target_deck
@@ -156,6 +196,9 @@ cmd_new() {
   if [[ -n "$active_main" ]]; then
     active_main_addr=$(echo "$active_main" | jq -r '.address // empty')
     active_main_fs=$(echo "$active_main" | jq -r '.fullscreen // 0')
+    if [[ -n "$active_main_addr" ]]; then
+      save_main_window "$active_main_addr"
+    fi
   fi
 
   local before_addrs
@@ -352,6 +395,20 @@ cmd_close() {
     if [[ -n "$target_addr" ]]; then
       hyprctl dispatch "hl.dsp.focus({ window = \"address:$target_addr\" })" > /dev/null 2>&1 || true
     fi
+  else
+    # All decks closed -> return focus to original main window on active workspace!
+    local saved_main
+    saved_main=$(get_saved_main_window)
+    if [[ -n "$saved_main" ]]; then
+      sleep 0.05
+      local cur_ws
+      cur_ws=$(hyprctl activeworkspace -j 2>/dev/null | jq -r '.id // empty')
+      local win_ws
+      win_ws=$(hyprctl clients -j 2>/dev/null | jq -r ".[] | select(.address == \"$saved_main\") | .workspace.id // empty")
+      if [[ "$cur_ws" == "$win_ws" ]]; then
+        hyprctl dispatch "hl.dsp.focus({ window = \"address:$saved_main\" })" > /dev/null 2>&1 || true
+      fi
+    fi
   fi
 }
 
@@ -417,6 +474,9 @@ cmd_launch() {
   if [[ -n "$active_main" ]]; then
     active_main_addr=$(echo "$active_main" | jq -r '.address // empty')
     active_main_fs=$(echo "$active_main" | jq -r '.fullscreen // 0')
+    if [[ -n "$active_main_addr" ]]; then
+      save_main_window "$active_main_addr"
+    fi
   fi
 
   local before_addrs
