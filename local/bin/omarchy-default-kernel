@@ -35,7 +35,10 @@ apply_default_to_limine() {
   local target_pattern=""
 
   case "$kernel_name" in
-    cachyos)
+    cachyos | bore-lto | bore)
+      target_pattern="//linux-cachyos-bore-lto"
+      ;;
+    cachyos-stock)
       target_pattern="//linux-cachyos"
       ;;
     stock | default)
@@ -57,6 +60,9 @@ apply_default_to_limine() {
   # Calculate 1-based entry index in limine.conf
   local entry_idx
   entry_idx=$(grep -E '^\s*(\/\+|\/\/)' "$LIMINE_CONF" | grep -n "$target_pattern" | head -n 1 | cut -d: -f1 || true)
+  if [[ -z "$entry_idx" && "$kernel_name" =~ cachyos ]]; then
+    entry_idx=$(grep -E '^\s*(\/\+|\/\/)' "$LIMINE_CONF" | grep -n "//linux-cachyos" | head -n 1 | cut -d: -f1 || true)
+  fi
 
   if [[ -n "$entry_idx" ]]; then
     sudo sed -i "s/^default_entry:.*/default_entry: $entry_idx/" "$LIMINE_CONF"
@@ -84,13 +90,17 @@ target=$(cat "$SYSTEM_STATE_FILE" 2>/dev/null || echo "cachyos")
 pattern=""
 
 case "$target" in
-  cachyos) pattern="//linux-cachyos" ;;
+  cachyos|bore-lto|bore) pattern="//linux-cachyos-bore-lto" ;;
+  cachyos-stock) pattern="//linux-cachyos" ;;
   stock|default) pattern="//linux" ;;
   lts) pattern="//linux-lts" ;;
-  *) pattern="//linux-cachyos" ;;
+  *) pattern="//linux-cachyos-bore-lto" ;;
 esac
 
 entry_idx=$(grep -E '^\s*(\/\+|\/\/)' "$LIMINE_CONF" | grep -n "$pattern" | head -n 1 | cut -d: -f1 || true)
+if [[ -z "$entry_idx" && "$target" =~ cachyos ]]; then
+  entry_idx=$(grep -E '^\s*(\/\+|\/\/)' "$LIMINE_CONF" | grep -n "//linux-cachyos" | head -n 1 | cut -d: -f1 || true)
+fi
 if [[ -n "$entry_idx" ]]; then
   sed -i "s/^default_entry:.*/default_entry: $entry_idx/" "$LIMINE_CONF"
 fi
@@ -98,28 +108,61 @@ HOOK_EOF
   sudo chmod +x "$POST_HOOK"
 }
 
+update_limine_boot_order() {
+  local target_pattern="$1"
+  local order=""
+
+  case "$target_pattern" in
+    cachyos|bore-lto|bore)
+      order="*cachyos-bore-lto*, *cachyos*, *, *fallback, Snapshots"
+      ;;
+    stock|default)
+      order="*linux.efi*, *linux*, *, *fallback, Snapshots"
+      ;;
+    lts)
+      order="*linux-lts*, *, *fallback, Snapshots"
+      ;;
+  esac
+
+  if [[ -n "$order" ]]; then
+    for conf_file in /etc/default/limine /etc/limine-entry-tool.conf /etc/limine-entry-tool.d/omarchy-defaults.conf; do
+      if [[ -f "$conf_file" ]]; then
+        if grep -q '^BOOT_ORDER=' "$conf_file" 2>/dev/null; then
+          sudo sed -i "s|^BOOT_ORDER=.*|BOOT_ORDER=\"$order\"|" "$conf_file" 2>/dev/null || true
+        else
+          echo "BOOT_ORDER=\"$order\"" | sudo tee -a "$conf_file" >/dev/null 2>&1 || true
+        fi
+      fi
+    done
+    sudo limine-snapper-sync >/dev/null 2>&1 || sudo limine-entry-tool >/dev/null 2>&1 || true
+  fi
+}
+
 case "$target" in
-  cachyos)
+  cachyos | bore-lto | bore)
     echo "cachyos" > "$STATE_FILE"
     install_post_hook
+    update_limine_boot_order cachyos
     apply_default_to_limine cachyos
-    echo "Default boot kernel set to: CachyOS (BORE) [Persistent across all updates]"
+    echo "Default boot kernel set to: CachyOS BORE + LTO [Persistent across all updates]"
     ;;
   stock | default)
     echo "stock" > "$STATE_FILE"
     install_post_hook
+    update_limine_boot_order stock
     apply_default_to_limine stock
     echo "Default boot kernel set to: Arch Linux (Stock) [Persistent across all updates]"
     ;;
   lts)
     echo "lts" > "$STATE_FILE"
     install_post_hook
+    update_limine_boot_order lts
     apply_default_to_limine lts
     echo "Default boot kernel set to: Arch Linux (LTS) [Persistent across all updates]"
     ;;
   *)
     echo "Unknown kernel target: $target" >&2
-    echo "Usage: $0 [cachyos|stock|lts]" >&2
+    echo "Usage: $0 [cachyos|bore-lto|stock|lts]" >&2
     exit 1
     ;;
 esac

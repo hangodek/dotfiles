@@ -62,15 +62,21 @@ fi
 echo "    Syncing pacman databases..."
 pacman -Sy
 
-echo "==> [3/5] Installing CachyOS kernel, headers, and performance suite..."
+echo "==> [3/5] Installing CachyOS BORE + LTO kernel, headers, and performance suite..."
 pacman -S --needed --noconfirm \
-  linux-cachyos \
-  linux-cachyos-headers \
+  linux-cachyos-bore-lto \
+  linux-cachyos-bore-lto-headers \
   cachyos-settings \
   cachyos-hooks \
   ananicy-cpp \
   cachyos-ananicy-rules \
   rtkit
+
+# Clean up redundant standard linux-cachyos if present
+if pacman -Q linux-cachyos >/dev/null 2>&1; then
+  echo "    Removing redundant standard linux-cachyos packages..."
+  pacman -Rns --noconfirm linux-cachyos linux-cachyos-headers >/dev/null 2>&1 || true
+fi
 
 echo "==> [4/5] Enabling background optimization services & TCP BBRv3..."
 systemctl enable --now ananicy-cpp.service rtkit-daemon.service >/dev/null 2>&1 || true
@@ -88,11 +94,11 @@ EOF
 
 sysctl -p /etc/sysctl.d/99-bbr.conf >/dev/null 2>&1 || true
 
-echo "==> [5/6] Setting CachyOS as the default boot entry in Limine..."
+echo "==> [5/6] Setting CachyOS BORE + LTO as the default boot entry in Limine..."
 if grep -q '^BOOT_ORDER=' /etc/default/limine 2>/dev/null; then
-  sed -i 's|^BOOT_ORDER=.*|BOOT_ORDER="*cachyos*, *, *fallback, Snapshots"|' /etc/default/limine
+  sed -i 's|^BOOT_ORDER=.*|BOOT_ORDER="*cachyos-bore-lto*, *cachyos*, *, *fallback, Snapshots"|' /etc/default/limine
 else
-  echo 'BOOT_ORDER="*cachyos*, *, *fallback, Snapshots"' >> /etc/default/limine
+  echo 'BOOT_ORDER="*cachyos-bore-lto*, *cachyos*, *, *fallback, Snapshots"' >> /etc/default/limine
 fi
 limine-snapper-sync 2>/dev/null || limine-entry-tool 2>/dev/null || true
 
@@ -103,11 +109,11 @@ fi
 
 echo ""
 echo "================================================================="
-echo "  CachyOS Kernel & Performance Suite successfully installed!"
-echo "  - Kernel: linux-cachyos (BORE scheduler, -O3, x86-64-v3)"
+echo "  CachyOS BORE + LTO Kernel & Performance Suite successfully installed!"
+echo "  - Kernel: linux-cachyos-bore-lto (BORE scheduler, Full LTO, -O3, x86-64-v3)"
 echo "  - Settings: cachyos-settings (udev, sysctl, ZRAM, THP, audio limits)"
 echo "  - Process Auto-Nicer: ananicy-cpp (enabled and active)"
 echo ""
-echo "  Reboot your machine to enter the CachyOS kernel:"
+echo "  Reboot your machine to enter the CachyOS BORE + LTO kernel:"
 echo "    omarchy system reboot"
 echo "================================================================="
