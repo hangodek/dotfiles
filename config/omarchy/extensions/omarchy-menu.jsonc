@@ -25,7 +25,7 @@
   "setup.default.kernel.cachyos": {
     "icon": "󰌽",
     "label": "CachyOS (BORE)",
-    "when": "omarchy-pkg-present linux-cachyos",
+    "when": "omarchy-pkg-present linux-cachyos-bore-lto || omarchy-pkg-present linux-cachyos",
     "checked": "[[ \"$(omarchy-default-kernel)\" == \"cachyos\" ]]",
     "action": "omarchy-launch-floating-terminal-with-presentation 'omarchy-default-kernel cachyos'"
   },

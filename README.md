@@ -18,6 +18,7 @@ Personal dotfiles, native helper utilities, and system optimizations for Arch Li
 - **Low-Latency PipeWire & Real-Time Audio Engine**: Configured native sample rates (`44.1kHz` to `96kHz`), enforced 512-sample quantum headroom, 1024-sample WirePlumber ALSA DMA buffer headroom, DAC anti-sleep, and real-time priority limits for crackle-free DSP audio.
 - **Aggressive NVMe Preload Daemon (`preload.conf`)**: Optimized predictive readahead engine with 60 parallel threads, 10s adaptive cycle, and 500KB map resolution for near-instant app and shared library launches.
 - **CachyOS BORE + LTO Performance Suite**: Clang/LLVM Link-Time Optimized kernel with BORE CPU scheduler, TCP BBRv3 + CAKE queueing, ZRAM optimization, and PipeWire real-time priority.
+- **Ryzen Mobile Max Performance (`setup-ryzenadj.sh`)**: Sustained 25W-30W power limit on battery with `--max-performance` for full APU boost capability.
 - **Programmer Keyboard Layout**: Clean US layout with direct quotes and Compose mapped to CapsLock.
 
 ---
@@ -50,6 +51,7 @@ Personal dotfiles, native helper utilities, and system optimizations for Arch Li
 ├── scripts/
 │   ├── restore-system-patches.sh # Master system restorer and Pacman post-update hook
 │   ├── setup-cachyos.sh         # Optional CachyOS kernel and sysctl installer
+│   ├── setup-ryzenadj.sh        # AMD Ryzen Mobile 25W-30W max-performance unlocker
 │   ├── setup-preload.sh         # Aggressive NVMe preload daemon installer
 │   ├── setup-audio-performance.sh # Real-time audio limits and DAC power-save installer
 │   ├── patch-smooth-menu.sh     # Spotlight animation patch for Super+Space
