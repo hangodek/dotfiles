@@ -10,7 +10,8 @@ INDICATORS_WIDGET="/usr/share/omarchy/shell/plugins/bar/widgets/Indicators.qml"
 
 echo "--> Checking Top Bar Full-Width mode indicator..."
 
-if [[ -f "$FULLWIDTH_QML" ]]; then
+# Check if both FullWidth.qml exists AND Indicators.qml includes FullWidth
+if [[ -f "$FULLWIDTH_QML" ]] && grep -q '"FullWidth"' "$INDICATORS_WIDGET" 2>/dev/null; then
   echo "    Full-Width indicator already active."
   exit 0
 fi
@@ -20,7 +21,8 @@ if [[ ! -w "/usr/share/omarchy" && $EUID -ne 0 ]]; then
   exit 0
 fi
 
-# 1. Write FullWidth.qml indicator component
+# 1. Write FullWidth.qml indicator component if missing
+if [[ ! -f "$FULLWIDTH_QML" ]]; then
 sudo tee "$FULLWIDTH_QML" > /dev/null << 'EOF'
 import QtQuick
 import Quickshell
@@ -82,6 +84,7 @@ BarIndicator {
   }
 }
 EOF
+fi
 
 # 2. Patch Indicators.qml default list to include FullWidth if not already present
 if ! grep -q '"FullWidth"' "$INDICATORS_WIDGET"; then
