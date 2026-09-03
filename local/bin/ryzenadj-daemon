@@ -1,0 +1,17 @@
+#!/bin/bash
+# Periodic daemon to maintain RyzenAdj max-performance & 25W/30W TDP limits against OEM EC resets.
+# Mimics UXTU (Universal x86 Tuning Utility) continuous re-application.
+
+set -euo pipefail
+
+exec 2>/dev/null
+
+while true; do
+  /usr/local/bin/ryzenadj \
+    --max-performance \
+    --stapm-limit=25000 \
+    --fast-limit=30000 \
+    --slow-limit=25000 \
+    --tctl-temp=85 >/dev/null 2>&1 || true
+  sleep 3
+done

@@ -76,6 +76,7 @@
         ├── omarchy-default-agent# Agent switcher
         ├── omarchy-default-kernel# Default boot kernel switcher and Limine configurator
         ├── nav-window           # Compiled C 2D spatial window tile navigator
+        ├── ryzenadj-daemon      # Continuous 3s daemon locking 25W-30W APU power
         └── powerprofilesctl     # Native DBus wrapper for 1-click power profiles
 ```
 

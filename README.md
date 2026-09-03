@@ -18,7 +18,7 @@ Personal dotfiles, native helper utilities, and system optimizations for Arch Li
 - **Low-Latency PipeWire & Real-Time Audio Engine**: Configured native sample rates (`44.1kHz` to `96kHz`), enforced 512-sample quantum headroom, 1024-sample WirePlumber ALSA DMA buffer headroom, DAC anti-sleep, and real-time priority limits for crackle-free DSP audio.
 - **Aggressive NVMe Preload Daemon (`preload.conf`)**: Optimized predictive readahead engine with 60 parallel threads, 10s adaptive cycle, and 500KB map resolution for near-instant app and shared library launches.
 - **CachyOS BORE + LTO Performance Suite**: Clang/LLVM Link-Time Optimized kernel with BORE CPU scheduler, TCP BBRv3 + CAKE queueing, ZRAM optimization, and PipeWire real-time priority.
-- **Ryzen Mobile Max Performance (`setup-ryzenadj.sh`)**: Sustained 25W-30W power limit on battery with `--max-performance` for full APU boost capability.
+- **Ryzen Mobile Max Performance Daemon (`setup-ryzenadj.sh`, `ryzenadj-daemon`)**: Continuous 3-second re-apply daemon locking sustained 25W-30W TDP and `--max-performance` on battery against OEM EC / firmware resets.
 - **Programmer Keyboard Layout**: Clean US layout with direct quotes and Compose mapped to CapsLock.
 
 ---
@@ -72,6 +72,7 @@ Personal dotfiles, native helper utilities, and system optimizations for Arch Li
     ├── omarchy-download         # Turbo downloader (aria2c + yt-dlp)
     ├── omarchy-default-kernel   # Default boot kernel selector and Limine configurator
     ├── powerprofilesctl         # Native DBus wrapper for 1-click power profiles
+    ├── ryzenadj-daemon          # Continuous 3s daemon locking 25W-30W APU power
     ├── agyd                     # Auto-permission wrapper for Antigravity CLI
     └── omarchy-agent            # Default agent dispatcher
 ```
