@@ -19,6 +19,7 @@ Personal dotfiles, native helper utilities, and system optimizations for Arch Li
 - **Aggressive NVMe Preload Daemon (`preload.conf`)**: Optimized predictive readahead engine with 60 parallel threads, 10s adaptive cycle, and 500KB map resolution for near-instant app and shared library launches.
 - **CachyOS BORE + LTO Performance Suite**: Clang/LLVM Link-Time Optimized kernel with BORE CPU scheduler, TCP BBRv3 + CAKE queueing, ZRAM optimization, and PipeWire real-time priority.
 - **Ryzen Mobile Max Performance Daemon (`setup-ryzenadj.sh`, `ryzenadj-daemon`)**: Continuous 3-second re-apply daemon locking sustained 25W-30W TDP and `--max-performance` on battery against OEM EC / firmware resets.
+- **MacBook-Class Touchpad Physics & Gestures**: 1:1 real-time physical workspace swiping with kinetic inertia, 4-finger gestures for App Menu and Scratchpad, and 200Hz PS/2 report rate boost script.
 - **Programmer Keyboard Layout**: Clean US layout with direct quotes and Compose mapped to CapsLock.
 
 ---
@@ -41,6 +42,18 @@ Personal dotfiles, native helper utilities, and system optimizations for Arch Li
 
 ---
 
+## Touchpad Gestures (MacBook-Class)
+
+| Gesture | Action | Description |
+| :--- | :--- | :--- |
+| **3-Finger Swipe (Left / Right)** | 1:1 Workspace Slide | Real-time physical workspace tracking with kinetic inertia |
+| **4-Finger Swipe Up** | Open App Menu | Spotlight launcher toggle (Super + Space) |
+| **4-Finger Swipe Down** | Toggle Scratchpad | Slide open / hide special scratchpad overlay |
+| **1-Finger Tap / 2-Finger Tap / 3-Finger Tap** | Left / Right / Middle Click | macOS-style button map (3-finger opens link in new tab) |
+| **Tap and Drag (1-Finger)** | Select Text / Move Windows | Double-tap and slide without physical click |
+
+---
+
 ## Repository Structure
 
 ```
@@ -50,6 +63,7 @@ Personal dotfiles, native helper utilities, and system optimizations for Arch Li
 ├── README.md                    # Documentation and keybindings
 ├── scripts/
 │   ├── restore-system-patches.sh # Master system restorer and Pacman post-update hook
+│   ├── setup-touchpad-performance.sh # 200Hz PS/2 polling rate and latency optimizer
 │   ├── setup-cachyos.sh         # Optional CachyOS kernel and sysctl installer
 │   ├── setup-ryzenadj.sh        # AMD Ryzen Mobile 25W-30W max-performance unlocker
 │   ├── setup-preload.sh         # Aggressive NVMe preload daemon installer
@@ -60,6 +74,7 @@ Personal dotfiles, native helper utilities, and system optimizations for Arch Li
 ├── config/
 │   ├── hypr/                    # Hyprland bindings, looknfeel, input, autostart
 │   ├── omarchy/                 # Omarchy shell and menu customizations
+│   ├── environment.d/           # Wayland kinetic smooth pixel scrolling environment
 │   ├── pipewire/                # PipeWire native clock rates and quantum buffer headroom
 │   ├── wireplumber/             # WirePlumber ALSA DMA headroom and DAC anti-sleep
 │   ├── foot/                    # Terminal configuration (resize-delay-ms = 20)

@@ -19,7 +19,7 @@ hl.config({
     -- Start with numlock on by default.
     numlock_by_default = true,
 
-    -- Increase sensitivity for mouse/trackpad (default: 0).
+    -- Increase sensitivity for mouse/trackpad (restored snappy preference).
     sensitivity = 0.35,
 
     -- Turn off mouse acceleration (default: adaptive).
@@ -32,26 +32,62 @@ hl.config({
       -- Use two-finger clicks for right-click instead of lower-right corner.
       clickfinger_behavior = true,
 
+      -- Tap button map: 1 finger = left, 2 fingers = right, 3 fingers = middle.
+      tap_button_map = "lrm",
+
+      -- Enable tap to click and tap and drag.
+      tap_to_click = true,
+      tap_and_drag = true,
+
       -- Control the speed of your scrolling.
       scroll_factor = 0.4,
 
       -- Enable the touchpad while typing.
       disable_while_typing = false,
 
-      -- Left-click-and-drag with three fingers.
-      drag_3fg = 1,
+      -- Disable 3-finger drag so 3 fingers are 100% dedicated to 1:1 workspace swiping.
+      drag_3fg = 0,
+
+      -- Disable accidental middle button emulation from button zones.
+      middle_button_emulation = false,
     },
+  },
+
+  -- 1:1 Real-time workspace swipe physics (macOS Mission Control style)
+  gestures = {
+    workspace_swipe_distance = 300,
+    workspace_swipe_invert = true,
+    workspace_swipe_min_speed_to_force = 20,
+    workspace_swipe_cancel_ratio = 0.3,
+    workspace_swipe_create_new = true,
+    workspace_swipe_use_r = true,
+    workspace_swipe_direction_lock = true,
+    workspace_swipe_direction_lock_threshold = 10,
+    workspace_swipe_forever = true,
   },
 })
 
 -- App-specific touchpad scroll speeds.
 -- o.window("(Alacritty|kitty|foot)", { scroll_touchpad = 1.5 })
--- o.window("com.mitchellh.ghostty", { scroll_touchpad = 0.2 })
+o.window("com.mitchellh.ghostty", { scroll_touchpad = 0.25 })
 
--- Enable touchpad gestures for changing workspaces.
--- See https://wiki.hypr.land/Configuring/Advanced-and-Cool/Gestures/
--- hl.gesture({ fingers = 3, direction = "horizontal", action = "workspace" })
+-- Enable 1:1 real-time workspace swiping with 3 fingers (macOS Mission Control).
+hl.gesture({ fingers = 3, direction = "horizontal", action = "workspace" })
 
--- Enable touchpad gestures for moving focus (helpful on scrolling layout).
--- hl.gesture({ fingers = 3, direction = "left", action = function() hl.dispatch(hl.dsp.focus({ direction = "l" })) end })
--- hl.gesture({ fingers = 3, direction = "right", action = function() hl.dispatch(hl.dsp.focus({ direction = "r" })) end })
+-- 4-Finger swipe up: open App Menu (Spotlight launcher).
+hl.gesture({
+  fingers = 4,
+  direction = "up",
+  action = function()
+    hl.dispatch(hl.dsp.exec_cmd("omarchy-menu toggle"))
+  end,
+})
+
+-- 4-Finger swipe down: toggle special scratchpad overlay.
+hl.gesture({
+  fingers = 4,
+  direction = "down",
+  action = function()
+    hl.dispatch(hl.dsp.workspace.toggle_special("scratchpad"))
+  end,
+})

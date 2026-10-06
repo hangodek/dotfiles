@@ -47,7 +47,12 @@ if [[ -f "$DOTFILES/scripts/setup-audio-performance.sh" ]]; then
   bash "$DOTFILES/scripts/setup-audio-performance.sh" || true
 fi
 
-# 6. Preserve CachyOS Pre-Compiled Binary Repositories in /etc/pacman.conf
+# 6. High-Rate Touchpad Performance (200Hz Polling)
+if [[ -f "$DOTFILES/scripts/setup-touchpad-performance.sh" ]]; then
+  bash "$DOTFILES/scripts/setup-touchpad-performance.sh" || true
+fi
+
+# 7. Preserve CachyOS Pre-Compiled Binary Repositories in /etc/pacman.conf
 PACMAN_CONF="/etc/pacman.conf"
 if [[ -f "$PACMAN_CONF" && -f "/etc/pacman.d/cachyos-v3-mirrorlist" ]]; then
   if ! grep -q "\[cachyos-v3\]" "$PACMAN_CONF"; then
