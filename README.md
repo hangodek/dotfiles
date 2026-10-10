@@ -11,8 +11,8 @@ Personal dotfiles, native helper utilities, and system optimizations for Arch Li
 - **Universal Turbo Downloader (`omarchy-download`)**: Unified aria2c (16 parallel connections) and yt-dlp wrapper with automatic clipboard link detection, Bilibili anti-403 referer injection, format extraction, and decoupled background file manager spawning.
 - **Instant Zero-Flicker Window Resizing**: Disabled intermediate Wayland buffer scaling flood and tuned snappy layout transitions, eliminating black/white blank screens when resizing Chromium, OpenCode, and terminals.
 - **Foot Terminal Optimization (`foot.ini`)**: Configured `resize-delay-ms = 20` for responsive, debounced redraws on tiling window resizing.
-- **Spotlight Menu Animations**: Smooth cubic zoom and fade animation patch for the application launcher (`Super + Space`).
-- **Navbar 1px Font Slider**: Patch enabling 1px fine-grained text scaling steps (`9px` to `20px`) in the monitor/display panel.
+- **Spotlight Menu Animations**: Smooth cubic zoom and fade animation patch for the application launcher (`Super + Space`) across both system and dev channel paths.
+- **Navbar 1px Font Slider**: Patch enabling 1px fine-grained text scaling steps (`9px` to `20px`) in the monitor/display panel across both system and dev channel paths.
 - **Limine Dynamic Kernel Selector (`omarchy-default-kernel`)**: Automatic parsing of UKI entries and persistent post-update hooks.
 - **Debloated Keybindings**: Preinstalled webapp shortcuts disabled in favor of clean user keybindings.
 - **Low-Latency PipeWire & Real-Time Audio Engine**: Configured native sample rates (`44.1kHz` to `96kHz`), enforced 512-sample quantum headroom, 1024-sample WirePlumber ALSA DMA buffer headroom, DAC anti-sleep, and real-time priority limits for crackle-free DSP audio.
@@ -68,9 +68,9 @@ Personal dotfiles, native helper utilities, and system optimizations for Arch Li
 │   ├── setup-ryzenadj.sh        # AMD Ryzen Mobile 25W-30W max-performance unlocker
 │   ├── setup-preload.sh         # Aggressive NVMe preload daemon installer
 │   ├── setup-audio-performance.sh # Real-time audio limits and DAC power-save installer
-│   ├── patch-smooth-menu.sh     # Spotlight animation patch for Super+Space
-│   ├── patch-navbar-font-slider.sh # 1px incremental font size slider patch
-│   └── patch-fullwidth-indicator.sh # Top bar full-width mode indicator patch
+│   ├── patch-smooth-menu.sh     # Spotlight animation patch for Super+Space (system & dev)
+│   ├── patch-navbar-font-slider.sh # 1px incremental font size slider patch (system & dev)
+│   └── patch-fullwidth-indicator.sh # Top bar full-width mode indicator patch (system & dev)
 ├── config/
 │   ├── hypr/                    # Hyprland bindings, looknfeel, input, autostart
 │   ├── omarchy/                 # Omarchy shell and menu customizations

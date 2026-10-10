@@ -1,30 +1,49 @@
 #!/bin/bash
 # Patch Omarchy Top Bar to add a Full-Width (Super+E) Active Indicator widget
-# This script must be run with sudo or via bootstrap.sh
+# Automatically supports system (/usr/share/omarchy) and dev channel checkout paths.
 
 set -euo pipefail
 
-INDICATORS_DIR="/usr/share/omarchy/shell/plugins/bar/indicators"
-FULLWIDTH_QML="$INDICATORS_DIR/FullWidth.qml"
-INDICATORS_WIDGET="/usr/share/omarchy/shell/plugins/bar/widgets/Indicators.qml"
+# Collect all potential shell directories
+TARGET_DIRS=()
 
-echo "--> Checking Top Bar Full-Width mode indicator..."
+# 1. Dev channel checkout in user home if present
+if [[ -d "${HOME}/omarchy/shell/plugins/bar" ]]; then
+  TARGET_DIRS+=("${HOME}/omarchy/shell/plugins/bar")
+fi
 
-# Check if both FullWidth.qml exists AND Indicators.qml includes FullWidth
-if [[ -f "$FULLWIDTH_QML" ]] && grep -q '"FullWidth"' "$INDICATORS_WIDGET" 2>/dev/null; then
-  echo "    Full-Width indicator already active."
+# 2. OMARCHY_PATH environment if set
+if [[ -n "${OMARCHY_PATH:-}" && -d "${OMARCHY_PATH}/shell/plugins/bar" ]]; then
+  TARGET_DIRS+=("${OMARCHY_PATH}/shell/plugins/bar")
+fi
+
+# 3. System installation directory
+if [[ -d "/usr/share/omarchy/shell/plugins/bar" ]]; then
+  TARGET_DIRS+=("/usr/share/omarchy/shell/plugins/bar")
+fi
+
+# Remove duplicates while preserving order
+UNIQUE_TARGETS=()
+for dir in "${TARGET_DIRS[@]}"; do
+  canonical=$(readlink -f "$dir" 2>/dev/null || echo "$dir")
+  found=0
+  for u in "${UNIQUE_TARGETS[@]}"; do
+    if [[ "$u" == "$canonical" ]]; then
+      found=1
+      break
+    fi
+  done
+  if (( !found )); then
+    UNIQUE_TARGETS+=("$canonical")
+  fi
+done
+
+if (( ${#UNIQUE_TARGETS[@]} == 0 )); then
+  echo "    Notice: No Omarchy bar plugins directory found."
   exit 0
 fi
 
-if [[ ! -w "/usr/share/omarchy" && $EUID -ne 0 ]]; then
-  echo "    Notice: Root permissions needed to patch /usr/share/omarchy/ (run with sudo to apply)."
-  exit 0
-fi
-
-# 1. Write FullWidth.qml indicator component if missing
-if [[ ! -f "$FULLWIDTH_QML" ]]; then
-sudo tee "$FULLWIDTH_QML" > /dev/null << 'EOF'
-import QtQuick
+FULLWIDTH_QML_CONTENT='import QtQuick
 import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Io
@@ -50,7 +69,7 @@ BarIndicator {
 
   Process {
     id: probeProcess
-    command: ["bash", "-c", "hyprctl activewindow -j 2>/dev/null | jq -r '.fullscreen // 0'"]
+    command: ["bash", "-c", "hyprctl activewindow -j 2>/dev/null | jq -r \x27.fullscreen // 0\x27"]
     stdout: SplitParser {
       onRead: function(line) {
         var fs = parseInt(String(line).trim())
@@ -83,13 +102,49 @@ BarIndicator {
     command: ["hyprctl", "dispatch", "hl.dsp.window.fullscreen({ mode = \"maximized\" })"]
   }
 }
-EOF
-fi
+'
 
-# 2. Patch Indicators.qml default list to include FullWidth if not already present
-if ! grep -q '"FullWidth"' "$INDICATORS_WIDGET"; then
-  echo "    Patching Indicators.qml defaultIndicatorEntries..."
-  sudo sed -i 's/defaultIndicatorEntries: \[/defaultIndicatorEntries: [ "FullWidth",/' "$INDICATORS_WIDGET"
-fi
+echo "--> Checking Top Bar Full-Width mode indicator across Omarchy targets..."
 
-echo "--> Full-Width indicator patch applied."
+for bar_dir in "${UNIQUE_TARGETS[@]}"; do
+  indicators_dir="$bar_dir/indicators"
+  fullwidth_file="$indicators_dir/FullWidth.qml"
+  widget_file="$bar_dir/widgets/Indicators.qml"
+
+  echo "    Checking target: $bar_dir"
+
+  # Determine if write access requires sudo
+  write_cmd=()
+  if [[ ! -w "$indicators_dir" || ! -w "$widget_file" ]]; then
+    if [[ $EUID -ne 0 ]]; then
+      if command -v sudo >/dev/null 2>&1; then
+        write_cmd=(sudo)
+      else
+        echo "    Notice: Write permission required for $bar_dir (skipping)."
+        continue
+      fi
+    fi
+  fi
+
+  # 1. Write FullWidth.qml if missing
+  if [[ ! -f "$fullwidth_file" ]]; then
+    echo "    Writing FullWidth.qml to $indicators_dir..."
+    if (( ${#write_cmd[@]} > 0 )); then
+      printf "%s" "$FULLWIDTH_QML_CONTENT" | "${write_cmd[@]}" tee "$fullwidth_file" > /dev/null
+    else
+      printf "%s" "$FULLWIDTH_QML_CONTENT" > "$fullwidth_file"
+    fi
+  fi
+
+  # 2. Patch Indicators.qml defaultIndicatorEntries
+  if [[ -f "$widget_file" ]] && ! grep -q '"FullWidth"' "$widget_file"; then
+    echo "    Patching Indicators.qml in $widget_file..."
+    if (( ${#write_cmd[@]} > 0 )); then
+      "${write_cmd[@]}" sed -i 's/defaultIndicatorEntries: \[/defaultIndicatorEntries: [ "FullWidth",/' "$widget_file"
+    else
+      sed -i 's/defaultIndicatorEntries: \[/defaultIndicatorEntries: [ "FullWidth",/' "$widget_file"
+    fi
+  fi
+done
+
+echo "--> Full-Width indicator patch verified across all targets."
