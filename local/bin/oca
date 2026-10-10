@@ -1,0 +1,3 @@
+#!/bin/bash
+# oca: Launch OpenCode CLI with auto-approve permissions
+exec opencode --auto "$@"

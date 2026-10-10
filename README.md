@@ -78,8 +78,9 @@ Personal dotfiles, native helper utilities, and system optimizations for Arch Li
 │   ├── pipewire/                # PipeWire native clock rates and quantum buffer headroom
 │   ├── wireplumber/             # WirePlumber ALSA DMA headroom and DAC anti-sleep
 │   ├── foot/                    # Terminal configuration (resize-delay-ms = 20)
+│   ├── fontconfig/              # Font configuration (monospace -> CaskaydiaMono Nerd Font)
 │   ├── preload/                 # Aggressive NVMe preload daemon tuning
-│   ├── bash/                    # Shell aliases (agyd)
+│   ├── bash/                    # Shell aliases (agyd, oc, oca)
 │   ├── starship.toml            # Cross-shell prompt configuration
 │   └── git/config               # Git identity and configuration
 └── local/bin/
@@ -89,6 +90,8 @@ Personal dotfiles, native helper utilities, and system optimizations for Arch Li
     ├── powerprofilesctl         # Native DBus wrapper for 1-click power profiles
     ├── ryzenadj-daemon          # Continuous 3s daemon locking 25W-30W APU power
     ├── agyd                     # Auto-permission wrapper for Antigravity CLI
+    ├── oc                       # OpenCode CLI runner
+    ├── oca                      # OpenCode CLI runner with auto-approve permissions
     └── omarchy-agent            # Default agent dispatcher
 ```
 

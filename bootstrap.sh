@@ -57,6 +57,12 @@ if [[ -f "$DOTFILES/config/starship.toml" ]]; then
   echo "    linked starship.toml"
 fi
 
+if [[ -f "$DOTFILES/config/fontconfig/fonts.conf" ]]; then
+  mkdir -p "$TARGET_HOME/.config/fontconfig"
+  ln -sf "$DOTFILES/config/fontconfig/fonts.conf" "$TARGET_HOME/.config/fontconfig/fonts.conf"
+  echo "    linked fontconfig/fonts.conf"
+fi
+
 if [[ -f "$DOTFILES/config/foot/foot.ini" ]]; then
   mkdir -p "$TARGET_HOME/.config/foot"
   ln -sf "$DOTFILES/config/foot/foot.ini" "$TARGET_HOME/.config/foot/foot.ini"

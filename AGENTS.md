@@ -65,13 +65,17 @@
 │   │   └── extensions/
 │   │       └── omarchy-menu.jsonc # App launcher menu customizations
 │   ├── bash/
-│   │   └── aliases.sh           # Shell aliases (agyd -> agy --dangerously-skip-permissions)
+│   │   └── aliases.sh           # Shell aliases (agyd, oc, oca)
+│   ├── fontconfig/
+│   │   └── fonts.conf           # System font fallback overrides
 │   ├── starship.toml            # Fast cross-shell prompt configuration
 │   └── git/
 │       └── config               # Git user identity and aliases
 └── local/
     └── bin/
         ├── agyd                 # Auto-permission wrapper for Antigravity CLI
+        ├── oc                   # OpenCode CLI runner
+        ├── oca                  # OpenCode CLI runner with auto-approve permissions
         ├── omarchy-agent        # Default agent dispatcher
         ├── omarchy-default-agent# Agent switcher
         ├── omarchy-default-kernel# Default boot kernel switcher and Limine configurator
