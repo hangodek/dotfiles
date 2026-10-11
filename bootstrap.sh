@@ -141,7 +141,13 @@ if [[ $EUID -eq 0 && "$TARGET_USER" != "root" ]]; then
   chown -h "$TARGET_USER:$TARGET_USER" "$TARGET_HOME/.local/bin/"* 2>/dev/null || true
 fi
 
-# 2. System Patches & Automations (Spotlight, 1px slider, Preload, Audio, Pacman hook)
+# 2. Omarchy Channel & Package Setup
+echo ""
+if [[ -f "$DOTFILES/scripts/setup-omarchy-dev.sh" ]]; then
+  bash "$DOTFILES/scripts/setup-omarchy-dev.sh"
+fi
+
+# 3. System Patches & Automations (Spotlight, 1px slider, Preload, Audio, Pacman hook)
 echo ""
 echo "--> Restoring system-level patches and optimizations..."
 if [[ -f "$DOTFILES/scripts/restore-system-patches.sh" ]]; then
@@ -154,7 +160,7 @@ if [[ -f "$DOTFILES/scripts/restore-system-patches.sh" ]]; then
   fi
 fi
 
-# 3. Reload session
+# 4. Reload session
 echo ""
 echo "--> Reloading session components..."
 if [[ -n "${WAYLAND_DISPLAY:-}" || -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]]; then
