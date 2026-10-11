@@ -69,6 +69,37 @@ if [[ -f "$DOTFILES/config/foot/foot.ini" ]]; then
   echo "    linked foot/foot.ini"
 fi
 
+echo "--> Calibrating browser and desktop font preferences..."
+for pref_file in "$TARGET_HOME/.config/chromium/Default/Preferences" "$TARGET_HOME/.config/google-chrome/Default/Preferences"; do
+  if [[ -f "$pref_file" ]]; then
+    python3 -c "
+import json, sys
+p = '$pref_file'
+try:
+    with open(p, 'r', encoding='utf-8') as f:
+        d = json.load(f)
+    d.setdefault('webkit', {}).setdefault('webprefs', {})['fonts'] = {
+        'fixed': {'Zyyy': 'SFMono Nerd Font'},
+        'math': {'Zyyy': ''},
+        'sansserif': {'Zyyy': 'SF Pro Display'},
+        'serif': {'Zyyy': 'SF Pro Text'},
+        'standard': {'Zyyy': 'SF Pro Display'}
+    }
+    with open(p, 'w', encoding='utf-8') as f:
+        json.dump(d, f, ensure_ascii=False)
+except Exception:
+    pass
+" 2>/dev/null || true
+    echo "    calibrated browser fonts in $(basename "$(dirname "$pref_file")")/Preferences"
+  fi
+done
+
+if command -v gsettings >/dev/null 2>&1; then
+  gsettings set org.gnome.desktop.interface font-name "SF Pro Display 11" 2>/dev/null || true
+  gsettings set org.gnome.desktop.interface monospace-font-name "SFMono Nerd Font 12.5" 2>/dev/null || true
+  echo "    synced GTK font settings (SF Pro Display 11, SFMono Nerd Font 12.5)"
+fi
+
 if [[ -f "$DOTFILES/config/git/config" ]]; then
   mkdir -p "$TARGET_HOME/.config/git"
   ln -sf "$DOTFILES/config/git/config" "$TARGET_HOME/.config/git/config"
