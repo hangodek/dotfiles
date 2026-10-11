@@ -13,6 +13,7 @@ Personal dotfiles, native helper utilities, and system optimizations for Arch Li
 - **Foot Terminal Optimization (`foot.ini`)**: Configured `resize-delay-ms = 20` for responsive, debounced redraws on tiling window resizing.
 - **Spotlight Menu Animations**: Smooth cubic zoom and fade animation patch for the application launcher (`Super + Space`) across both system and dev channel paths.
 - **Navbar 1px Font Slider**: Patch enabling 1px fine-grained text scaling steps (`9px` to `20px`) in the monitor/display panel across both system and dev channel paths.
+- **macOS Typography Engine & Apple Fonts**: System-wide SF Pro Display, SF Pro Text, and SFMono Nerd Font with FreeType stem darkening (`cff:no-stem-darkening=0`) and calibrated horizontal RGB subpixel filtering for deep, crisp, ink-like text contrast.
 - **Omarchy Dev Channel Automation (`setup-omarchy-dev.sh`)**: Ensures the dev release channel is active and installs required dev packages (`omarchy-dev`, `omarchy-settings-dev`) with automatic migration runs.
 - **Limine Dynamic Kernel Selector (`omarchy-default-kernel`)**: Automatic parsing of UKI entries and persistent post-update hooks.
 - **Debloated Keybindings**: Preinstalled webapp shortcuts disabled in favor of clean user keybindings.
@@ -76,11 +77,11 @@ Personal dotfiles, native helper utilities, and system optimizations for Arch Li
 ├── config/
 │   ├── hypr/                    # Hyprland bindings, looknfeel, input, autostart
 │   ├── omarchy/                 # Omarchy shell and menu customizations
-│   ├── environment.d/           # Wayland kinetic smooth pixel scrolling environment
+│   ├── environment.d/           # Wayland pixel scrolling and FreeType stem darkening
 │   ├── pipewire/                # PipeWire native clock rates and quantum buffer headroom
 │   ├── wireplumber/             # WirePlumber ALSA DMA headroom and DAC anti-sleep
 │   ├── foot/                    # Terminal configuration (resize-delay-ms = 20)
-│   ├── fontconfig/              # Font configuration (monospace -> CaskaydiaMono Nerd Font)
+│   ├── fontconfig/              # Font configuration (system-wide Apple SF Pro & SF Mono Nerd Font)
 │   ├── preload/                 # Aggressive NVMe preload daemon tuning
 │   ├── bash/                    # Shell aliases (agyd, oc, oca)
 │   ├── starship.toml            # Cross-shell prompt configuration
