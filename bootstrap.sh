@@ -95,9 +95,9 @@ except Exception:
 done
 
 if command -v gsettings >/dev/null 2>&1; then
-  gsettings set org.gnome.desktop.interface font-name "SF Pro Display 11" 2>/dev/null || true
+  gsettings set org.gnome.desktop.interface font-name "SF Pro Text 11" 2>/dev/null || true
   gsettings set org.gnome.desktop.interface monospace-font-name "SFMono Nerd Font 12.5" 2>/dev/null || true
-  echo "    synced GTK font settings (SF Pro Display 11, SFMono Nerd Font 12.5)"
+  echo "    synced GTK font settings (SF Pro Text 11, SFMono Nerd Font 12.5)"
 fi
 
 if [[ -f "$DOTFILES/config/git/config" ]]; then
