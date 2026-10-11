@@ -80,7 +80,7 @@ try:
         d = json.load(f)
     d.setdefault('webkit', {}).setdefault('webprefs', {})['fonts'] = {
         'fixed': {'Zyyy': 'SFMono Nerd Font'},
-        'math': {'Zyyy': ''},
+        'math': {'Zyyy': 'DejaVu Math TeX Gyre'},
         'sansserif': {'Zyyy': 'SF Pro Display'},
         'serif': {'Zyyy': 'SF Pro Text'},
         'standard': {'Zyyy': 'SF Pro Display'}
